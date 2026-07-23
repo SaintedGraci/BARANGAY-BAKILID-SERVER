@@ -33,6 +33,10 @@ import initDbRouter from "./init-db-api.js";
 import { errorMiddleware } from "./middleware/errorMiddlware.js";
 
 const app = express();
+
+// Trust proxy - needed for Railway deployment (behind reverse proxy)
+app.set('trust proxy', 1);
+
 const httpServer = createServer(app);
 
 // Configure CORS origins for Socket.IO
