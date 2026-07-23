@@ -59,8 +59,9 @@ export const createAnnouncement = async (req, res) => {
 
         // Add image path if file was uploaded
         if (req.file) {
-            announcementData.imagePath = req.file.path;
-            console.log('  ✅ Image path saved:', req.file.path);
+            // Save only relative path (uploads/filename.ext)
+            announcementData.imagePath = `uploads/${req.file.filename}`;
+            console.log('  ✅ Image path saved:', announcementData.imagePath);
         }
 
         const newAnnouncement = await Announcement.create(announcementData);
@@ -104,12 +105,17 @@ export const updateAnnouncement = async (req, res) => {
             // Delete old image if exists
             if (announcement.imagePath) {
                 try {
-                    fs.unlinkSync(announcement.imagePath);
+                    // Construct full path for deletion
+                    const fullPath = announcement.imagePath.startsWith('uploads/') 
+                        ? announcement.imagePath 
+                        : announcement.imagePath;
+                    fs.unlinkSync(fullPath);
                 } catch (err) {
                     console.error("Error deleting old image:", err);
                 }
             }
-            updateData.imagePath = req.file.path;
+            // Save only relative path (uploads/filename.ext)
+            updateData.imagePath = `uploads/${req.file.filename}`;
         }
 
         await announcement.update(updateData);
@@ -141,7 +147,11 @@ export const deleteAnnouncement = async (req, res) => {
         // Delete associated image if exists
         if (announcement.imagePath) {
             try {
-                fs.unlinkSync(announcement.imagePath);
+                // Handle both old full paths and new relative paths
+                const imagePath = announcement.imagePath.startsWith('uploads/') 
+                    ? announcement.imagePath 
+                    : announcement.imagePath;
+                fs.unlinkSync(imagePath);
             } catch (err) {
                 console.error("Error deleting image:", err);
             }

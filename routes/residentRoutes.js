@@ -61,7 +61,7 @@ router.use(authMiddleware);
  *       403:
  *         description: Insufficient permissions
  */
-router.get("/", roleMiddleware(["staff", "admin", "captain"]), getAllResidents);
+router.get("/", roleMiddleware(["staff", "secretary", "admin", "captain"]), getAllResidents);
 
 /**
  * @swagger
@@ -77,7 +77,7 @@ router.get("/", roleMiddleware(["staff", "admin", "captain"]), getAllResidents);
  *       403:
  *         description: Admin or captain role required
  */
-router.get("/pending-verifications", roleMiddleware(["admin", "captain"]), getPendingVerifications);
+router.get("/pending-verifications", roleMiddleware(["admin", "secretary", "staff", "captain"]), getPendingVerifications);
 
 /**
  * @swagger
@@ -101,7 +101,7 @@ router.get("/pending-verifications", roleMiddleware(["admin", "captain"]), getPe
  *       404:
  *         description: Resident not found
  */
-router.put("/:id/approve", roleMiddleware(["admin", "captain"]), approveResident);
+router.put("/:id/approve", roleMiddleware(["admin", "secretary", "staff", "captain"]), approveResident);
 
 /**
  * @swagger
@@ -131,7 +131,7 @@ router.put("/:id/approve", roleMiddleware(["admin", "captain"]), approveResident
  *       403:
  *         description: Admin or captain role required
  */
-router.put("/:id/reject", roleMiddleware(["admin", "captain"]), rejectResident);
+router.put("/:id/reject", roleMiddleware(["admin", "secretary", "staff", "captain"]), rejectResident);
 
 /**
  * @swagger
@@ -212,7 +212,7 @@ router.get("/:id", getResidentById);
  *       403:
  *         description: Admin or captain role required
  */
-router.post("/create-with-account", roleMiddleware(["admin", "captain"]), createResidentWithAccount);
+router.post("/create-with-account", roleMiddleware(["admin", "secretary", "captain"]), createResidentWithAccount);
 
 /**
  * @swagger
@@ -241,7 +241,7 @@ router.post("/create-with-account", roleMiddleware(["admin", "captain"]), create
  *       403:
  *         description: Insufficient permissions
  */
-router.post("/", roleMiddleware(["staff", "admin", "captain"]), createResident);
+router.post("/", roleMiddleware(["staff", "secretary", "admin", "captain"]), createResident);
 
 /**
  * @swagger
@@ -270,7 +270,7 @@ router.post("/", roleMiddleware(["staff", "admin", "captain"]), createResident);
  *       404:
  *         description: Resident not found
  */
-router.put("/:id", roleMiddleware(["staff", "admin", "captain"]), updateResident);
+router.put("/:id", roleMiddleware(["staff", "secretary", "admin", "captain"]), updateResident);
 
 /**
  * @swagger

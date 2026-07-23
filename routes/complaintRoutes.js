@@ -19,7 +19,7 @@ router.use(authMiddleware);
  * @swagger
  * /api/complaints:
  *   get:
- *     summary: Get all complaints (Admin only)
+ *     summary: Get all complaints (Officials only)
  *     tags: [Complaints]
  *     security:
  *       - bearerAuth: []
@@ -27,9 +27,9 @@ router.use(authMiddleware);
  *       200:
  *         description: Complaints retrieved successfully
  *       403:
- *         description: Admin role required
+ *         description: Official role required
  */
-router.get("/", roleMiddleware(["admin"]), getAllComplaints);
+router.get("/", roleMiddleware(["admin", "captain", "secretary", "staff"]), getAllComplaints);
 
 /**
  * @swagger
@@ -101,7 +101,7 @@ router.post("/", roleMiddleware(["resident"]), createComplaint);
  * @swagger
  * /api/complaints/{id}:
  *   put:
- *     summary: Update complaint status (Admin only)
+ *     summary: Update complaint status (Officials only)
  *     tags: [Complaints]
  *     security:
  *       - bearerAuth: []
@@ -124,15 +124,15 @@ router.post("/", roleMiddleware(["resident"]), createComplaint);
  *       200:
  *         description: Complaint updated
  *       403:
- *         description: Admin role required
+ *         description: Official role required
  */
-router.put("/:id", roleMiddleware(["admin"]), updateComplaint);
+router.put("/:id", roleMiddleware(["admin", "captain", "secretary", "staff"]), updateComplaint);
 
 /**
  * @swagger
  * /api/complaints/{id}:
  *   delete:
- *     summary: Delete a complaint (Admin only)
+ *     summary: Delete a complaint (Admin/Captain only)
  *     tags: [Complaints]
  *     security:
  *       - bearerAuth: []
@@ -146,8 +146,8 @@ router.put("/:id", roleMiddleware(["admin"]), updateComplaint);
  *       200:
  *         description: Complaint deleted
  *       403:
- *         description: Admin role required
+ *         description: Admin or Captain role required
  */
-router.delete("/:id", roleMiddleware(["admin"]), deleteComplaint);
+router.delete("/:id", roleMiddleware(["admin", "captain"]), deleteComplaint);
 
 export default router;

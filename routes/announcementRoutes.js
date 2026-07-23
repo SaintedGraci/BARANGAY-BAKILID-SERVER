@@ -80,9 +80,9 @@ router.use(authMiddleware);
  *       201:
  *         description: Announcement created
  *       403:
- *         description: Insufficient permissions
+ *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.post("/", roleMiddleware(["staff", "admin", "captain"]), upload.single('image'), createAnnouncement);
+router.post("/", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), createAnnouncement);
 
 /**
  * @swagger
@@ -107,9 +107,9 @@ router.post("/", roleMiddleware(["staff", "admin", "captain"]), upload.single('i
  *       200:
  *         description: Announcement updated
  *       403:
- *         description: Insufficient permissions
+ *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.put("/:id", roleMiddleware(["staff", "admin", "captain"]), upload.single('image'), updateAnnouncement);
+router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), updateAnnouncement);
 
 /**
  * @swagger
@@ -129,7 +129,7 @@ router.put("/:id", roleMiddleware(["staff", "admin", "captain"]), upload.single(
  *       200:
  *         description: Announcement deleted
  *       403:
- *         description: Admin or captain role required
+ *         description: Admin or Captain role required
  */
 router.delete("/:id", roleMiddleware(["admin", "captain"]), deleteAnnouncement);
 

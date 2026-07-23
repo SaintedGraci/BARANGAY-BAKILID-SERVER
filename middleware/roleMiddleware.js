@@ -28,5 +28,17 @@ export const requireAdmin = roleMiddleware(['admin']);
 // Helper middleware to require resident role
 export const requireResident = roleMiddleware(['resident']);
 
+// Helper middleware for captain (highest barangay authority)
+export const requireCaptain = roleMiddleware(['captain', 'admin']);
+
+// Helper middleware for secretary (administrative support)
+export const requireSecretary = roleMiddleware(['secretary', 'captain', 'admin']);
+
+// Helper middleware for staff (front-line service)
+export const requireStaff = roleMiddleware(['staff', 'secretary', 'captain', 'admin']);
+
+// Helper middleware for any barangay official
+export const requireOfficial = roleMiddleware(['staff', 'secretary', 'captain', 'admin']);
+
 // Helper middleware to allow both admin and resident
-export const requireAuthenticated = roleMiddleware(['admin', 'resident']);
+export const requireAuthenticated = roleMiddleware(['admin', 'captain', 'secretary', 'staff', 'resident']);

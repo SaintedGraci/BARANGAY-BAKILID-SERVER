@@ -48,6 +48,11 @@ export const registerValidation = [
         .matches(/^[a-zA-Z\s-]+$/).withMessage('Last name can only contain letters, spaces, and hyphens')
         .escape(),
     
+    body('gender')
+        .trim()
+        .notEmpty().withMessage('Gender is required')
+        .isIn(['Male', 'Female']).withMessage('Gender must be either Male or Female'),
+    
     body('birthDate')
         .notEmpty().withMessage('Birth date is required')
         .isISO8601().withMessage('Invalid date format')
@@ -70,6 +75,13 @@ export const registerValidation = [
         .notEmpty().withMessage('Contact number is required')
         .matches(/^(09|\+639)\d{9}$/).withMessage('Invalid Philippine mobile number format (e.g., 09123456789)')
         .escape(),
+    
+    body('gmail')
+        .optional({ nullable: true, checkFalsy: true })
+        .trim()
+        .isEmail().withMessage('Invalid email format')
+        .matches(/^[a-zA-Z0-9._%+-]+@gmail\.com$/).withMessage('Gmail must be a @gmail.com address')
+        .normalizeEmail(),
     
     body('address')
         .trim()

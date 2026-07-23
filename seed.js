@@ -74,6 +74,40 @@ async function seedDatabase() {
             console.log("ℹ️  Captain user already exists");
         }
 
+        // Create Secretary User
+        const secretaryPassword = await bcryptjs.hash("secretary123", 10);
+        const [secretaryUser, secretaryCreated] = await User.findOrCreate({
+            where: { email: "secretary@bakilid.gov.ph" },
+            defaults: {
+                username: "secretary",
+                email: "secretary@bakilid.gov.ph",
+                password: secretaryPassword,
+                role: "secretary",
+                isVerified: true
+            }
+        });
+
+        if (secretaryCreated) {
+            console.log("✅ Secretary user created");
+            console.log("   Email: secretary@bakilid.gov.ph");
+            console.log("   Password: secretary123");
+
+            // Create Official record for secretary
+            await Official.create({
+                firstName: "Ana",
+                middleName: "Cruz",
+                lastName: "Reyes",
+                position: "Barangay Secretary",
+                contactNumber: "09234567890",
+                termStart: new Date("2023-01-01"),
+                termEnd: new Date("2026-12-31"),
+                isActive: true
+            });
+            console.log("✅ Secretary official record created");
+        } else {
+            console.log("ℹ️  Secretary user already exists");
+        }
+
         // Create Staff User
         const staffPassword = await bcryptjs.hash("staff123", 10);
         const [staffUser, staffCreated] = await User.findOrCreate({
@@ -91,6 +125,19 @@ async function seedDatabase() {
             console.log("✅ Staff user created");
             console.log("   Email: staff@bakilid.gov.ph");
             console.log("   Password: staff123");
+
+            // Create Official record for staff
+            await Official.create({
+                firstName: "Pedro",
+                middleName: "Gomez",
+                lastName: "Martinez",
+                position: "Barangay Staff",
+                contactNumber: "09345678901",
+                termStart: new Date("2023-01-01"),
+                termEnd: new Date("2026-12-31"),
+                isActive: true
+            });
+            console.log("✅ Staff official record created");
         } else {
             console.log("ℹ️  Staff user already exists");
         }
@@ -104,7 +151,7 @@ async function seedDatabase() {
                 email: "maria.santos@email.com",
                 password: resident1Password,
                 role: "resident",
-                isVerified: true
+                isVerified: false  // Not verified yet - needs admin approval
             }
         });
 
@@ -113,7 +160,7 @@ async function seedDatabase() {
             console.log("   Email: maria.santos@email.com");
             console.log("   Password: resident123");
 
-            // Create Resident profile
+            // Create Resident profile with pending verification
             await Resident.create({
                 firstName: "Maria",
                 middleName: "Garcia",
@@ -124,9 +171,12 @@ async function seedDatabase() {
                 purok: "Purok 1",
                 address: "123 Main Street, Bakilid, Mandaue City",
                 citizenship: "Filipino",
-                UserId: resident1User.id
+                UserId: resident1User.id,
+                verificationStatus: 'pending',  // Needs verification
+                validIdPath: 'uploads/green-tin-id-1024x640-1784358078572.png',  // Sample ID
+                proofOfResidencyPath: 'uploads/barnagay residentcy-1784358078631.png'  // Sample proof
             });
-            console.log("✅ Resident 1 profile created");
+            console.log("✅ Resident 1 profile created (pending verification)");
         } else {
             console.log("ℹ️  Resident 1 already exists");
         }
@@ -140,7 +190,7 @@ async function seedDatabase() {
                 email: "pedro.reyes@email.com",
                 password: resident2Password,
                 role: "resident",
-                isVerified: true
+                isVerified: false  // Not verified yet - needs admin approval
             }
         });
 
@@ -149,7 +199,7 @@ async function seedDatabase() {
             console.log("   Email: pedro.reyes@email.com");
             console.log("   Password: resident123");
 
-            // Create Resident profile
+            // Create Resident profile with pending verification
             await Resident.create({
                 firstName: "Pedro",
                 middleName: "Cruz",
@@ -160,9 +210,12 @@ async function seedDatabase() {
                 purok: "Purok 2",
                 address: "456 Second Street, Bakilid, Mandaue City",
                 citizenship: "Filipino",
-                UserId: resident2User.id
+                UserId: resident2User.id,
+                verificationStatus: 'pending',  // Needs verification
+                validIdPath: 'uploads/Screenshot (3)-1780895446770.png',  // Sample ID
+                proofOfResidencyPath: 'uploads/Screenshot 2026-05-22 164634-1780895446751.png'  // Sample proof
             });
-            console.log("✅ Resident 2 profile created");
+            console.log("✅ Resident 2 profile created (pending verification)");
         } else {
             console.log("ℹ️  Resident 2 already exists");
         }
@@ -170,21 +223,32 @@ async function seedDatabase() {
         console.log("\n🎉 Database seeding completed successfully!");
         console.log("\n📋 Summary of Accounts:");
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        console.log("Admin Account:");
+        console.log("🔧 Admin Account:");
         console.log("  Email: admin@bakilid.gov.ph");
         console.log("  Password: admin123");
-        console.log("\nCaptain Account:");
+        console.log("  Role: System Administrator");
+        console.log("\n🏛️ Captain Account:");
         console.log("  Email: captain@bakilid.gov.ph");
         console.log("  Password: captain123");
-        console.log("\nStaff Account:");
+        console.log("  Role: Barangay Captain");
+        console.log("\n📋 Secretary Account:");
+        console.log("  Email: secretary@bakilid.gov.ph");
+        console.log("  Password: secretary123");
+        console.log("  Role: Barangay Secretary");
+        console.log("\n👥 Staff Account:");
         console.log("  Email: staff@bakilid.gov.ph");
         console.log("  Password: staff123");
-        console.log("\nResident Account 1:");
+        console.log("  Role: Barangay Staff");
+        console.log("\n👤 Resident Account 1:");
         console.log("  Email: maria.santos@email.com");
         console.log("  Password: resident123");
-        console.log("\nResident Account 2:");
+        console.log("  Role: Resident");
+        console.log("  Status: ⏳ Pending Verification (Can login but needs admin approval)");
+        console.log("\n👤 Resident Account 2:");
         console.log("  Email: pedro.reyes@email.com");
         console.log("  Password: resident123");
+        console.log("  Role: Resident");
+        console.log("  Status: ⏳ Pending Verification (Can login but needs admin approval)");
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
         process.exit(0);

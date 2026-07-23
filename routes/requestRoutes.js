@@ -125,7 +125,7 @@ router.post("/", createRequest);
  *       403:
  *         description: Insufficient permissions
  */
-router.put("/:id", roleMiddleware(["staff", "admin", "captain"]), updateRequest);
+router.put("/:id", roleMiddleware(["staff", "secretary", "admin", "captain"]), updateRequest);
 
 /**
  * @swagger

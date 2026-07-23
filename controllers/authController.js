@@ -37,7 +37,7 @@ export const register = async (req, res) => {
     try {
         const {
             username, email, password,
-            firstName, middleName, lastName, birthDate, contactNumber,
+            firstName, middleName, lastName, gender, birthDate, contactNumber, gmail,
             address, purok
         } = req.body;
 
@@ -82,8 +82,10 @@ export const register = async (req, res) => {
             firstName,
             middleName,
             lastName,
+            gender,
             birthDate,
             contactNumber,
+            gmail: gmail || null,
             address,
             purok,
             validIdPath,

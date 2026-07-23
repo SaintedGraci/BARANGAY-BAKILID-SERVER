@@ -31,8 +31,9 @@ const User = sequelize.define("User", {
         type: DataTypes.ENUM(
             "resident",
             "staff",
-            "admin",
-            "captain"
+            "secretary",
+            "captain",
+            "admin"
         ),
         defaultValue: "resident",
     },
