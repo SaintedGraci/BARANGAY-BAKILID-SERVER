@@ -69,14 +69,6 @@ setInterval(async () => {
 app.use(helmetConfig); // Security headers
 app.use(additionalSecurityHeaders); // Additional security headers
 
-// Configure allowed CORS origins
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://bakilidgov.vercel.app',
-  process.env.CLIENT_URL,
-  process.env.CORS_ORIGIN
-].filter(Boolean);
-
 app.use(cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
