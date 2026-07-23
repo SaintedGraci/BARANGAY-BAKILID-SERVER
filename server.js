@@ -34,9 +34,18 @@ import { errorMiddleware } from "./middleware/errorMiddlware.js";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Configure CORS origins for Socket.IO
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://bakilidgov.vercel.app',
+  process.env.CLIENT_URL,
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
@@ -59,8 +68,27 @@ setInterval(async () => {
 // Middleware
 app.use(helmetConfig); // Security headers
 app.use(additionalSecurityHeaders); // Additional security headers
+
+// Configure allowed CORS origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://bakilidgov.vercel.app',
+  process.env.CLIENT_URL,
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        logger.warn(`CORS blocked request from origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true
 }));
 app.use(httpLogger); // HTTP request logging
