@@ -27,6 +27,7 @@ import RevokedToken from "./models/revokedToken.js";
 
 // Import routes
 import apiRoutes from "./routes/index.js";
+import initDbRouter from "./init-db-api.js";
 
 // Import error middleware
 import { errorMiddleware } from "./middleware/errorMiddlware.js";
@@ -99,6 +100,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // API Routes
 logger.info("📍 Registering API routes...");
 app.use("/api", apiRoutes);
+app.use("/api/admin", initDbRouter); // Database initialization endpoint
 logger.info("✅ API routes registered");
 
 // Error handling middleware (must be last)
