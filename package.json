@@ -9,6 +9,7 @@
     "setup": "node setup-db.js",
     "update-roles": "node update-role-enum.js",
     "fix-images": "node fix-announcement-images.js",
+    "fix-admin-password": "node fix-admin-password.js",
     "reset-residents": "node reset-test-residents.js",
     "check-residents": "node check-residents.js",
     "seed": "node seed.js",
