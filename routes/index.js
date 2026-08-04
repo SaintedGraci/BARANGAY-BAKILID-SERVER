@@ -5,6 +5,7 @@ import requestRoutes from "./requestRoutes.js";
 import complaintRoutes from "./complaintRoutes.js";
 import announcementRoutes from "./announcementRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
+import emailVerificationRoutes from "./emailVerificationRoutes.js";
 import healthRoutes from "./healthRoutes.js";
 import logsRoutes from "./logsRoutes.js";
 
@@ -17,6 +18,7 @@ router.use("/requests", requestRoutes);
 router.use("/complaints", complaintRoutes);
 router.use("/announcements", announcementRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/email-verification", emailVerificationRoutes);
 router.use("/health", healthRoutes);
 router.use("/logs", logsRoutes);
 
