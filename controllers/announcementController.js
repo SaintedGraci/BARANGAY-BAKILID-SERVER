@@ -57,11 +57,10 @@ export const createAnnouncement = async (req, res) => {
             expiryDate: expiryDate || null,
         };
 
-        // Add image path if file was uploaded
+        // Add image path if file was uploaded (Cloudinary URL)
         if (req.file) {
-            // Save only relative path (uploads/filename.ext)
-            announcementData.imagePath = `uploads/${req.file.filename}`;
-            console.log('  ✅ Image path saved:', announcementData.imagePath);
+            announcementData.imagePath = req.file.path;
+            console.log('  ✅ Image uploaded to Cloudinary:', announcementData.imagePath);
         }
 
         const newAnnouncement = await Announcement.create(announcementData);
@@ -74,10 +73,6 @@ export const createAnnouncement = async (req, res) => {
         });
     } catch (error) {
         console.error("Create announcement error:", error);
-        // Clean up uploaded file if error occurs
-        if (req.file) {
-            fs.unlinkSync(req.file.path);
-        }
         return res.status(500).json({ message: "Server error" });
     }
 };
@@ -102,20 +97,8 @@ export const updateAnnouncement = async (req, res) => {
 
         // Handle image update
         if (req.file) {
-            // Delete old image if exists
-            if (announcement.imagePath) {
-                try {
-                    // Construct full path for deletion
-                    const fullPath = announcement.imagePath.startsWith('uploads/') 
-                        ? announcement.imagePath 
-                        : announcement.imagePath;
-                    fs.unlinkSync(fullPath);
-                } catch (err) {
-                    console.error("Error deleting old image:", err);
-                }
-            }
-            // Save only relative path (uploads/filename.ext)
-            updateData.imagePath = `uploads/${req.file.filename}`;
+            // Cloudinary automatically handles old images
+            updateData.imagePath = req.file.path;
         }
 
         await announcement.update(updateData);
@@ -127,10 +110,6 @@ export const updateAnnouncement = async (req, res) => {
         });
     } catch (error) {
         console.error("Update announcement error:", error);
-        // Clean up uploaded file if error occurs
-        if (req.file) {
-            fs.unlinkSync(req.file.path);
-        }
         return res.status(500).json({ message: "Server error" });
     }
 };
@@ -144,19 +123,7 @@ export const deleteAnnouncement = async (req, res) => {
             return res.status(404).json({ message: "Announcement not found" });
         }
 
-        // Delete associated image if exists
-        if (announcement.imagePath) {
-            try {
-                // Handle both old full paths and new relative paths
-                const imagePath = announcement.imagePath.startsWith('uploads/') 
-                    ? announcement.imagePath 
-                    : announcement.imagePath;
-                fs.unlinkSync(imagePath);
-            } catch (err) {
-                console.error("Error deleting image:", err);
-            }
-        }
-
+        // Delete from database (Cloudinary files can stay)
         await announcement.destroy();
 
         return res.status(200).json({

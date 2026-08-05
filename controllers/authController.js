@@ -72,9 +72,9 @@ export const register = async (req, res) => {
             isVerified: false // User needs admin approval
         });
 
-        // Handle file uploads
-        const validIdPath = req.files?.validId ? `/uploads/${req.files.validId[0].filename}` : null;
-        const proofOfResidencyPath = req.files?.proofOfResidency ? `/uploads/${req.files.proofOfResidency[0].filename}` : null;
+        // Handle file uploads from Cloudinary
+        const validIdPath = req.files?.validId ? req.files.validId[0].path : null;
+        const proofOfResidencyPath = req.files?.proofOfResidency ? req.files.proofOfResidency[0].path : null;
 
         // Create resident profile
         await Resident.create({
