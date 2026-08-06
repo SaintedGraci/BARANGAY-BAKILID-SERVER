@@ -1,6 +1,6 @@
 import Announcement from "../models/announcement.js";
-import fs from "fs";
-import path from "path";
+import { uploadToUploadThing } from "../config/uploadthing.js";
+import logger from "../config/logger.js";
 
 export const getAllAnnouncements = async (req, res) => {
     try {
@@ -41,9 +41,8 @@ export const createAnnouncement = async (req, res) => {
     try {
         const { title, description, status, priority, expiryDate } = req.body;
 
-        console.log('📝 Create Announcement Request:');
-        console.log('  - Body:', { title, description, status, priority, expiryDate });
-        console.log('  - File:', req.file ? `${req.file.filename} (${req.file.size} bytes)` : 'No file');
+        logger.info('📝 Create Announcement Request:', { title, description, status, priority, expiryDate });
+        logger.info('  - File:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : 'No file');
 
         if (!title || !description) {
             return res.status(400).json({ message: "Title and description are required" });
@@ -57,14 +56,19 @@ export const createAnnouncement = async (req, res) => {
             expiryDate: expiryDate || null,
         };
 
-        // Add image path if file was uploaded to Cloudinary
+        // Upload image to UploadThing if file present
         if (req.file) {
-            announcementData.imagePath = req.file.path; // Cloudinary URL
-            console.log('  ✅ Image uploaded to Cloudinary:', announcementData.imagePath);
+            try {
+                const imageUrl = await uploadToUploadThing(req.file.buffer, req.file.originalname);
+                announcementData.imagePath = imageUrl;
+                logger.info('  ✅ Image uploaded to UploadThing:', imageUrl);
+            } catch (uploadError) {
+                logger.error('  ❌ Image upload failed:', uploadError.message);
+            }
         }
 
         const newAnnouncement = await Announcement.create(announcementData);
-        console.log('  ✅ Announcement created with ID:', newAnnouncement.id);
+        logger.info('  ✅ Announcement created with ID:', newAnnouncement.id);
 
         return res.status(201).json({
             success: true,
@@ -72,7 +76,7 @@ export const createAnnouncement = async (req, res) => {
             data: newAnnouncement,
         });
     } catch (error) {
-        console.error("Create announcement error:", error);
+        logger.error("Create announcement error:", error);
         return res.status(500).json({ message: "Server error" });
     }
 };
@@ -95,9 +99,15 @@ export const updateAnnouncement = async (req, res) => {
             expiryDate: expiryDate ?? announcement.expiryDate,
         };
 
-        // Handle image update
+        // Upload new image to UploadThing if provided
         if (req.file) {
-            updateData.imagePath = req.file.path; // Cloudinary URL
+            try {
+                const imageUrl = await uploadToUploadThing(req.file.buffer, req.file.originalname);
+                updateData.imagePath = imageUrl;
+                logger.info('  ✅ Image updated on UploadThing:', imageUrl);
+            } catch (uploadError) {
+                logger.error('  ❌ Image upload failed:', uploadError.message);
+            }
         }
 
         await announcement.update(updateData);
@@ -108,7 +118,7 @@ export const updateAnnouncement = async (req, res) => {
             data: announcement,
         });
     } catch (error) {
-        console.error("Update announcement error:", error);
+        logger.error("Update announcement error:", error);
         return res.status(500).json({ message: "Server error" });
     }
 };
