@@ -23,7 +23,9 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'barangay-bakilid',
     allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-    transformation: [{ width: 1000, quality: 'auto' }]
+    transformation: [{ width: 1000, quality: 'auto' }],
+    // Use unsigned upload preset if available
+    upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET || undefined
   }
 });
 
