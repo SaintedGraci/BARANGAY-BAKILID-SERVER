@@ -25,19 +25,23 @@ export const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send verification email
+// Send verification email with retry logic
 export const sendVerificationEmail = async (email, code, name) => {
-  try {
-    const transporter = createTransporter();
+  const maxRetries = 2;
+  let lastError;
 
-    const mailOptions = {
-      from: {
-        name: 'Barangay Bakilid',
-        address: process.env.EMAIL_USER
-      },
-      to: email,
-      subject: 'Email Verification - Barangay Bakilid',
-      html: `
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const transporter = createTransporter();
+
+      const mailOptions = {
+        from: {
+          name: 'Barangay Bakilid',
+          address: process.env.EMAIL_USER
+        },
+        to: email,
+        subject: 'Email Verification - Barangay Bakilid',
+        html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -107,25 +111,35 @@ export const sendVerificationEmail = async (email, code, name) => {
         </body>
         </html>
       `
-    };
+      };
 
-    const info = await transporter.sendMail(mailOptions);
-    logger.info(`Verification email sent to ${email}: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    logger.error(`Failed to send verification email to ${email}:`, error.message);
-    
-    // More specific error messages
-    if (error.code === 'EAUTH') {
-      throw new Error('Email authentication failed. Please check Gmail credentials.');
-    } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
-      throw new Error('Connection timeout');
-    } else if (error.code === 'ECONNECTION') {
-      throw new Error('Failed to connect to email server');
+      const info = await transporter.sendMail(mailOptions);
+      logger.info(`Verification email sent to ${email}: ${info.messageId} (attempt ${attempt})`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      lastError = error;
+      logger.warn(`Email send attempt ${attempt}/${maxRetries} failed for ${email}: ${error.message}`);
+      
+      if (attempt < maxRetries) {
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
     }
-    
-    throw new Error(`Failed to send verification email: ${error.message}`);
   }
+
+  // All retries failed
+  logger.error(`Failed to send verification email to ${email} after ${maxRetries} attempts:`, lastError.message);
+  
+  // More specific error messages
+  if (lastError.code === 'EAUTH') {
+    throw new Error('Email authentication failed. Please check Gmail credentials.');
+  } else if (lastError.code === 'ETIMEDOUT' || lastError.code === 'ESOCKET') {
+    throw new Error('Connection timeout');
+  } else if (lastError.code === 'ECONNECTION') {
+    throw new Error('Failed to connect to email server');
+  }
+  
+  throw new Error(`Failed to send verification email: ${lastError.message}`);
 };
 
 export default {
