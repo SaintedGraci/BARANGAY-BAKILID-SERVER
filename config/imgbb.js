@@ -32,11 +32,11 @@ export async function uploadToImgBB(fileBuffer, fileName) {
     }
 
     const formData = new FormData();
-    formData.append('key', apiKey);
     formData.append('image', fileBuffer.toString('base64'));
     formData.append('name', fileName);
 
-    const response = await axios.post('https://api.imgbb.com/1/upload', formData, {
+    // API key goes in URL, not form data
+    const response = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, formData, {
       headers: formData.getHeaders(),
       timeout: 30000 // 30 seconds
     });
