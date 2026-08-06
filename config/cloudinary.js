@@ -20,22 +20,25 @@ const storage = new CloudinaryStorage({
   }
 });
 
-// Create multer upload instance with error handling
-export const cloudinaryUpload = multer({ 
+// Create base multer upload instance
+const upload = multer({ 
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     // Allow file even if there might be upload issues
     cb(null, true);
   }
-}).fields([
-  { name: 'validId', maxCount: 1 },
-  { name: 'proofOfResidency', maxCount: 1 }
-]);
+});
 
-// Wrapper to handle Cloudinary errors gracefully
+// Export the upload instance (works with .single(), .fields(), etc.)
+export const cloudinaryUpload = upload;
+
+// Wrapper for registration with error handling
 export const cloudinaryUploadHandler = (req, res, next) => {
-  cloudinaryUpload(req, res, (err) => {
+  upload.fields([
+    { name: 'validId', maxCount: 1 },
+    { name: 'proofOfResidency', maxCount: 1 }
+  ])(req, res, (err) => {
     if (err) {
       // Log error but continue without files
       logger.error('Cloudinary upload error:', err.message);
