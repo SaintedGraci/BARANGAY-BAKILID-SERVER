@@ -10,6 +10,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Log configuration status (without exposing secrets)
+logger.info('Cloudinary configuration:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? '✓' : '✗',
+  api_key: process.env.CLOUDINARY_API_KEY ? '✓' : '✗',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? '✓' : '✗'
+});
+
 // Configure Cloudinary Storage
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
@@ -40,8 +47,14 @@ export const cloudinaryUploadHandler = (req, res, next) => {
     { name: 'proofOfResidency', maxCount: 1 }
   ])(req, res, (err) => {
     if (err) {
-      // Log error but continue without files
-      logger.error('Cloudinary upload error:', err.message);
+      // Log detailed error information
+      logger.error('Cloudinary upload error:', {
+        message: err.message,
+        code: err.code,
+        statusCode: err.statusCode,
+        http_code: err.http_code,
+        name: err.name
+      });
       req.files = {}; // Set empty files object
     }
     next();
