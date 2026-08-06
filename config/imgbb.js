@@ -1,6 +1,5 @@
 import multer from 'multer';
 import axios from 'axios';
-import FormData from 'form-data';
 import logger from './logger.js';
 
 // Multer configuration for handling multipart form data
@@ -31,14 +30,18 @@ export async function uploadToImgBB(fileBuffer, fileName) {
       throw new Error('IMGBB_API_KEY not configured');
     }
 
-    const formData = new FormData();
-    formData.append('image', fileBuffer.toString('base64'));
-    formData.append('name', fileName);
+    // Convert buffer to base64 WITHOUT data URI prefix
+    const base64Image = fileBuffer.toString('base64');
 
-    // API key goes in URL, not form data
+    // Use URLSearchParams for form-urlencoded format (ImgBB prefers this)
+    const formData = new URLSearchParams();
+    formData.append('image', base64Image);
+
     const response = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, formData, {
-      headers: formData.getHeaders(),
-      timeout: 30000 // 30 seconds
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      timeout: 30000
     });
 
     if (response.data && response.data.data && response.data.data.url) {
