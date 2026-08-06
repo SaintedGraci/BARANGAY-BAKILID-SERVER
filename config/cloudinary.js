@@ -1,33 +1,64 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import logger from './logger.js';
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Log configuration status (without exposing secrets)
-logger.info('Cloudinary configuration:', {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? '✓' : '✗',
-  api_key: process.env.CLOUDINARY_API_KEY ? '✓' : '✗',
-  api_secret: process.env.CLOUDINARY_API_SECRET ? '✓' : '✗'
-});
+// Try Cloudinary first, fallback to local storage
+const useCloudinary = process.env.CLOUDINARY_CLOUD_NAME && 
+                      process.env.CLOUDINARY_API_KEY && 
+                      process.env.CLOUDINARY_API_SECRET;
 
-// Configure Cloudinary Storage
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'barangay-bakilid',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-    transformation: [{ width: 1000, quality: 'auto' }],
-    // Use unsigned upload preset if available
-    upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET || undefined
-  }
-});
+if (useCloudinary) {
+  // Configure Cloudinary
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+
+  // Log configuration status (without exposing secrets)
+  logger.info('Cloudinary configuration:', {
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? '✓' : '✗',
+    api_key: process.env.CLOUDINARY_API_KEY ? '✓' : '✗',
+    api_secret: process.env.CLOUDINARY_API_SECRET ? '✓' : '✗'
+  });
+} else {
+  logger.info('Using local file storage (Cloudinary not configured)');
+}
+
+// Storage configuration
+let storage;
+
+if (useCloudinary) {
+  // Use Cloudinary Storage
+  storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'barangay-bakilid',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+      transformation: [{ width: 1000, quality: 'auto' }],
+      upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET || undefined
+    }
+  });
+  logger.info('📦 Using Cloudinary storage');
+} else {
+  // Use Local Disk Storage
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, '../uploads'));
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+  logger.info('💾 Using local disk storage');
+}
 
 // Create base multer upload instance
 const upload = multer({ 

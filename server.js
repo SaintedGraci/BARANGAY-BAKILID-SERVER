@@ -92,6 +92,9 @@ app.use(httpLogger); // HTTP request logging
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
+
 // Make io accessible to routes
 app.set('io', io);
 
