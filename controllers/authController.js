@@ -72,20 +72,19 @@ export const register = async (req, res) => {
             isVerified: false // User needs admin approval
         });
 
-        // Handle file uploads from local storage
+        // Handle file uploads (S3 or local storage)
         let validIdPath = null;
         let proofOfResidencyPath = null;
         
         try {
-            // For local storage, save the filename to construct URL later
             if (req.files?.validId && req.files.validId[0]) {
-                validIdPath = `/uploads/${req.files.validId[0].filename}`;
+                // S3 returns full URL in 'location', local storage has 'filename'
+                validIdPath = req.files.validId[0].location || `/uploads/${req.files.validId[0].filename}`;
             }
             if (req.files?.proofOfResidency && req.files.proofOfResidency[0]) {
-                proofOfResidencyPath = `/uploads/${req.files.proofOfResidency[0].filename}`;
+                proofOfResidencyPath = req.files.proofOfResidency[0].location || `/uploads/${req.files.proofOfResidency[0].filename}`;
             }
         } catch (uploadError) {
-            // Log but don't fail registration if file upload fails
             console.log('File upload warning during registration:', uploadError.message);
         }
 
