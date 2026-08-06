@@ -1,77 +1,75 @@
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
 import logger from './logger.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  logger.info('📁 Created uploads directory');
-}
+logger.info('☁️ Cloudinary configured:', {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY ? 'Set' : 'Missing',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Missing'
+});
 
-// Local Disk Storage Configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename: fieldname-timestamp-random.ext
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+// Cloudinary Storage with proper configuration
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: 'barangay-bakilid',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+      resource_type: 'auto',
+      // Use upload preset if available (for unsigned uploads)
+      upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET || undefined,
+      public_id: `${file.fieldname}-${Date.now()}`,
+    };
   }
 });
 
-// File filter for allowed types
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|pdf/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-
-  if (extname && mimetype) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only JPEG, PNG, and PDF files are allowed'));
-  }
-};
-
-// Create base multer upload instance
-const upload = multer({ 
+// Create multer upload instance
+const upload = multer({
   storage: storage,
-  limits: { 
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: fileFilter
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, and PDF files are allowed'));
+    }
+  }
 });
 
-logger.info('� Using Railway local disk storage for file uploads');
-
-// Export the upload instance (works with .single(), .fields(), etc.)
+// Export for announcements (single file upload)
 export const cloudinaryUpload = upload;
 
-// Wrapper for registration with error handling
+// Wrapper for registration with detailed error handling
 export const cloudinaryUploadHandler = (req, res, next) => {
   upload.fields([
     { name: 'validId', maxCount: 1 },
     { name: 'proofOfResidency', maxCount: 1 }
   ])(req, res, (err) => {
     if (err) {
-      // Log detailed error information
-      logger.error('File upload error:', {
+      logger.error('Cloudinary upload error:', {
         message: err.message,
-        code: err.code
+        code: err.code,
+        http_code: err.http_code,
+        name: err.name
       });
-      // Continue without files on error
+      // Continue without files - don't fail registration
       req.files = {};
     }
     next();
   });
 };
 
-// No cloudinary export needed
-export default null;
+export default cloudinary;

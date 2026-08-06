@@ -1,7 +1,7 @@
 import express from "express";
 import { register, login, refreshToken, logout } from "../controllers/authController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-import { s3UploadHandler } from "../config/s3.js";
+import { cloudinaryUploadHandler } from "../config/cloudinary.js";
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from "../middleware/rateLimitMiddleware.js";
 import { registerValidation, loginValidation, refreshTokenValidation, handleValidationErrors } from "../validators/authValidators.js";
 
@@ -90,7 +90,7 @@ const router = express.Router();
  */
 router.post("/register", 
     registerLimiter, 
-    s3UploadHandler,
+    cloudinaryUploadHandler,
     registerValidation,
     handleValidationErrors,
     register

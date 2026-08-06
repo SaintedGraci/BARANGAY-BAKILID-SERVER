@@ -72,18 +72,14 @@ export const register = async (req, res) => {
             isVerified: false // User needs admin approval
         });
 
-        // Handle file uploads (S3 or local storage)
+        // Handle file uploads from Cloudinary
         let validIdPath = null;
         let proofOfResidencyPath = null;
         
         try {
-            if (req.files?.validId && req.files.validId[0]) {
-                // S3 returns full URL in 'location', local storage has 'filename'
-                validIdPath = req.files.validId[0].location || `/uploads/${req.files.validId[0].filename}`;
-            }
-            if (req.files?.proofOfResidency && req.files.proofOfResidency[0]) {
-                proofOfResidencyPath = req.files.proofOfResidency[0].location || `/uploads/${req.files.proofOfResidency[0].filename}`;
-            }
+            // Cloudinary returns full URL in 'path' property
+            validIdPath = req.files?.validId?.[0]?.path || null;
+            proofOfResidencyPath = req.files?.proofOfResidency?.[0]?.path || null;
         } catch (uploadError) {
             console.log('File upload warning during registration:', uploadError.message);
         }
