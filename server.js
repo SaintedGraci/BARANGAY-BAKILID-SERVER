@@ -8,6 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 import sequelize from "./config/db.js";
 import logger from "./config/logger.js";
 import { httpLogger } from "./middleware/loggingMiddleware.js";
+import { autoMigrate } from "./auto-migrate.js";
 import { helmetConfig, additionalSecurityHeaders } from "./middleware/securityMiddleware.js";
 import swaggerSpec from './config/swagger.js';
 
@@ -151,8 +152,10 @@ sequelize.authenticate()
         logger.info("✅ Database connected successfully");
         return sequelize.sync({ alter: false });
     })
-    .then(() => {
+    .then(async () => {
         logger.info("✅ Database synced");
+        // Run automatic migrations
+        await autoMigrate();
         httpServer.listen(PORT, () => {
             logger.info(`🚀 Server running on http://localhost:${PORT}`);
             logger.info(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
