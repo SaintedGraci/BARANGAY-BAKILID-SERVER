@@ -9,6 +9,7 @@ import emailVerificationRoutes from "./emailVerificationRoutes.js";
 import healthRoutes from "./healthRoutes.js";
 import logsRoutes from "./logsRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
+import userManagementRoutes from "./userManagementRoutes.js";
 
 const router = express.Router();
 
@@ -23,5 +24,6 @@ router.use("/email-verification", emailVerificationRoutes);
 router.use("/health", healthRoutes);
 router.use("/logs", logsRoutes);
 router.use("/analytics", analyticsRoutes);
+router.use("/admin/users", userManagementRoutes);
 
 export default router;

@@ -147,6 +147,15 @@ export const login = async (req, res) => {
             });
         }
 
+        // Check if user account is active
+        if (user.status === 'inactive') {
+            logAuthEvent('LOGIN_FAILED', user.id, false, { reason: 'Account inactive', ip: req.ip });
+            return res.status(403).json({
+                success: false,
+                message: "Your account has been deactivated. Please contact the administrator."
+            });
+        }
+
         // Generate tokens
         const accessToken = generateAccessToken(user);
         const refreshToken = await generateRefreshToken(user);
