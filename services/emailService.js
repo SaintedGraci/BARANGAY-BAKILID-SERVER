@@ -12,7 +12,11 @@ const createTransporter = () => {
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_APP_PASSWORD
-    }
+    },
+    // Add timeout and connection settings
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 5000, // 5 seconds
+    socketTimeout: 10000, // 10 seconds
   });
 };
 
@@ -110,9 +114,16 @@ export const sendVerificationEmail = async (email, code, name) => {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     logger.error(`Failed to send verification email to ${email}:`, error.message);
+    
+    // More specific error messages
     if (error.code === 'EAUTH') {
       throw new Error('Email authentication failed. Please check Gmail credentials.');
+    } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKET') {
+      throw new Error('Connection timeout');
+    } else if (error.code === 'ECONNECTION') {
+      throw new Error('Failed to connect to email server');
     }
+    
     throw new Error(`Failed to send verification email: ${error.message}`);
   }
 };
