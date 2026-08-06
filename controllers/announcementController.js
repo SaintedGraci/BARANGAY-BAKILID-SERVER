@@ -1,5 +1,5 @@
 import Announcement from "../models/announcement.js";
-import { uploadToUploadThing } from "../config/uploadthing.js";
+import { uploadToImgBB } from "../config/imgbb.js";
 import logger from "../config/logger.js";
 
 export const getAllAnnouncements = async (req, res) => {
@@ -56,12 +56,12 @@ export const createAnnouncement = async (req, res) => {
             expiryDate: expiryDate || null,
         };
 
-        // Upload image to UploadThing if file present
+        // Upload image to ImgBB if file present
         if (req.file) {
             try {
-                const imageUrl = await uploadToUploadThing(req.file.buffer, req.file.originalname);
+                const imageUrl = await uploadToImgBB(req.file.buffer, req.file.originalname);
                 announcementData.imagePath = imageUrl;
-                logger.info('  ✅ Image uploaded to UploadThing:', imageUrl);
+                logger.info('  ✅ Image uploaded to ImgBB:', imageUrl);
             } catch (uploadError) {
                 logger.error('  ❌ Image upload failed:', uploadError.message);
             }
@@ -99,12 +99,12 @@ export const updateAnnouncement = async (req, res) => {
             expiryDate: expiryDate ?? announcement.expiryDate,
         };
 
-        // Upload new image to UploadThing if provided
+        // Upload new image to ImgBB if provided
         if (req.file) {
             try {
-                const imageUrl = await uploadToUploadThing(req.file.buffer, req.file.originalname);
+                const imageUrl = await uploadToImgBB(req.file.buffer, req.file.originalname);
                 updateData.imagePath = imageUrl;
-                logger.info('  ✅ Image updated on UploadThing:', imageUrl);
+                logger.info('  ✅ Image updated on ImgBB:', imageUrl);
             } catch (uploadError) {
                 logger.error('  ❌ Image upload failed:', uploadError.message);
             }

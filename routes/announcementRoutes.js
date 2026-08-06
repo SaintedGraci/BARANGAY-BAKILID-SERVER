@@ -8,7 +8,7 @@ import {
 } from "../controllers/announcementController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
-import { upload } from "../config/uploadthing.js";
+import { upload } from "../config/imgbb.js";
 
 const router = express.Router();
 
