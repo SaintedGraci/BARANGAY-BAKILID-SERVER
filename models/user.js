@@ -10,6 +10,11 @@ const User = sequelize.define("User", {
         primaryKey: true,
     },
 
+    fullName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+
     username: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -27,6 +32,11 @@ const User = sequelize.define("User", {
         allowNull: false,
     },
 
+    contactNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+
     role: {
         type: DataTypes.ENUM(
             "resident",
@@ -36,6 +46,11 @@ const User = sequelize.define("User", {
             "admin"
         ),
         defaultValue: "resident",
+    },
+
+    status: {
+        type: DataTypes.ENUM("active", "inactive"),
+        defaultValue: "active",
     },
 
     isVerified: {

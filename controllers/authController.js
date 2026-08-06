@@ -72,16 +72,21 @@ export const register = async (req, res) => {
             isVerified: false // User needs admin approval
         });
 
-        // Handle file uploads from Cloudinary
+        // Handle file uploads from local storage
         let validIdPath = null;
         let proofOfResidencyPath = null;
         
         try {
-            validIdPath = req.files?.validId ? req.files.validId[0].path : null;
-            proofOfResidencyPath = req.files?.proofOfResidency ? req.files.proofOfResidency[0].path : null;
+            // For local storage, save the filename to construct URL later
+            if (req.files?.validId && req.files.validId[0]) {
+                validIdPath = `/uploads/${req.files.validId[0].filename}`;
+            }
+            if (req.files?.proofOfResidency && req.files.proofOfResidency[0]) {
+                proofOfResidencyPath = `/uploads/${req.files.proofOfResidency[0].filename}`;
+            }
         } catch (uploadError) {
             // Log but don't fail registration if file upload fails
-            logger.warn('File upload warning during registration:', uploadError.message);
+            console.log('File upload warning during registration:', uploadError.message);
         }
 
         // Create resident profile

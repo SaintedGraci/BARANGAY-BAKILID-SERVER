@@ -57,10 +57,10 @@ export const createAnnouncement = async (req, res) => {
             expiryDate: expiryDate || null,
         };
 
-        // Add image path if file was uploaded (Cloudinary URL)
+        // Add image path if file was uploaded (local storage)
         if (req.file) {
-            announcementData.imagePath = req.file.path;
-            console.log('  ✅ Image uploaded to Cloudinary:', announcementData.imagePath);
+            announcementData.imagePath = `/uploads/${req.file.filename}`;
+            console.log('  ✅ Image uploaded to local storage:', announcementData.imagePath);
         }
 
         const newAnnouncement = await Announcement.create(announcementData);
@@ -95,10 +95,9 @@ export const updateAnnouncement = async (req, res) => {
             expiryDate: expiryDate ?? announcement.expiryDate,
         };
 
-        // Handle image update
+        // Handle image update (local storage)
         if (req.file) {
-            // Cloudinary automatically handles old images
-            updateData.imagePath = req.file.path;
+            updateData.imagePath = `/uploads/${req.file.filename}`;
         }
 
         await announcement.update(updateData);
