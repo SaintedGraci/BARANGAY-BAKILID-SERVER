@@ -8,7 +8,9 @@ const createTransporter = () => {
   }
 
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // Use STARTTLS
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_APP_PASSWORD
@@ -17,6 +19,10 @@ const createTransporter = () => {
     connectionTimeout: 10000, // 10 seconds
     greetingTimeout: 5000, // 5 seconds
     socketTimeout: 10000, // 10 seconds
+    // Bypass some security checks
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 };
 
