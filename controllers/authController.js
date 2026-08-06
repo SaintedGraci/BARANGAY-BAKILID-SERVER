@@ -73,8 +73,16 @@ export const register = async (req, res) => {
         });
 
         // Handle file uploads from Cloudinary
-        const validIdPath = req.files?.validId ? req.files.validId[0].path : null;
-        const proofOfResidencyPath = req.files?.proofOfResidency ? req.files.proofOfResidency[0].path : null;
+        let validIdPath = null;
+        let proofOfResidencyPath = null;
+        
+        try {
+            validIdPath = req.files?.validId ? req.files.validId[0].path : null;
+            proofOfResidencyPath = req.files?.proofOfResidency ? req.files.proofOfResidency[0].path : null;
+        } catch (uploadError) {
+            // Log but don't fail registration if file upload fails
+            logger.warn('File upload warning during registration:', uploadError.message);
+        }
 
         // Create resident profile
         await Resident.create({

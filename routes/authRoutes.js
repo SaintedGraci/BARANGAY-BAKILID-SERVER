@@ -1,7 +1,7 @@
 import express from "express";
 import { register, login, refreshToken, logout } from "../controllers/authController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-import { cloudinaryUpload } from "../config/cloudinary.js";
+import { cloudinaryUploadHandler } from "../config/cloudinary.js";
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from "../middleware/rateLimitMiddleware.js";
 import { registerValidation, loginValidation, refreshTokenValidation, handleValidationErrors } from "../validators/authValidators.js";
 
@@ -90,10 +90,7 @@ const router = express.Router();
  */
 router.post("/register", 
     registerLimiter, 
-    cloudinaryUpload.fields([
-        { name: 'validId', maxCount: 1 },
-        { name: 'proofOfResidency', maxCount: 1 }
-    ]),
+    cloudinaryUploadHandler,
     registerValidation,
     handleValidationErrors,
     register

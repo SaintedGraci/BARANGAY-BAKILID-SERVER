@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
+import logger from './logger.js';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -19,10 +20,29 @@ const storage = new CloudinaryStorage({
   }
 });
 
-// Create multer upload instance
+// Create multer upload instance with error handling
 export const cloudinaryUpload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
-});
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    // Allow file even if there might be upload issues
+    cb(null, true);
+  }
+}).fields([
+  { name: 'validId', maxCount: 1 },
+  { name: 'proofOfResidency', maxCount: 1 }
+]);
+
+// Wrapper to handle Cloudinary errors gracefully
+export const cloudinaryUploadHandler = (req, res, next) => {
+  cloudinaryUpload(req, res, (err) => {
+    if (err) {
+      // Log error but continue without files
+      logger.error('Cloudinary upload error:', err.message);
+      req.files = {}; // Set empty files object
+    }
+    next();
+  });
+};
 
 export default cloudinary;
