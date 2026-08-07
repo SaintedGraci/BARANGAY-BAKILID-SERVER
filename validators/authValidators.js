@@ -98,9 +98,7 @@ export const registerValidation = [
 export const loginValidation = [
     body('email')
         .trim()
-        .notEmpty().withMessage('Email is required')
-        .isEmail().withMessage('Invalid email format')
-        .normalizeEmail(),
+        .notEmpty().withMessage('Username is required'),
     
     body('password')
         .notEmpty().withMessage('Password is required')

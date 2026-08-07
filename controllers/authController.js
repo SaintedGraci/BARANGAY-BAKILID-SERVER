@@ -123,15 +123,15 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body; // 'email' field contains username
 
-        // Find user by email
-        const user = await User.findOne({ where: { email } });
+        // Find user by username (field is still called 'email' in request for compatibility)
+        const user = await User.findOne({ where: { username: email } });
         if (!user) {
             logAuthEvent('LOGIN_FAILED', email, false, { reason: 'User not found', ip: req.ip });
             return res.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message: "Invalid username or password"
             });
         }
 
@@ -141,7 +141,7 @@ export const login = async (req, res) => {
             logAuthEvent('LOGIN_FAILED', user.id, false, { reason: 'Invalid password', ip: req.ip });
             return res.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message: "Invalid username or password"
             });
         }
 
