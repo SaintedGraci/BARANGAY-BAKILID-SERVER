@@ -83,10 +83,13 @@ app.use(cors({
         callback(null, true);
       } else {
         logger.warn(`CORS blocked request from origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
+        // Don't throw error, just deny with callback(null, false)
+        callback(null, false);
       }
     },
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
 app.use(httpLogger); // HTTP request logging
 app.use(express.json());
