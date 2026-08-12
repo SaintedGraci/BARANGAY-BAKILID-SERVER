@@ -123,25 +123,40 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
     try {
-        const { email, password } = req.body; // 'email' field contains username
+        const { email, password } = req.body; // 'email' field contains either email or username
+        
+        console.log('🔐 Login attempt:', { email, hasPassword: !!password });
 
-        // Find user by username (field is still called 'email' in request for compatibility)
-        const user = await User.findOne({ where: { username: email } });
+        // Determine if input is email or username
+        const isEmail = email.includes('@');
+        
+        console.log('📧 Input type:', isEmail ? 'email' : 'username');
+        
+        // Find user by email or username
+        const user = await User.findOne({ 
+            where: isEmail ? { email } : { username: email }
+        });
+        
         if (!user) {
+            console.log('❌ User not found:', email);
             logAuthEvent('LOGIN_FAILED', email, false, { reason: 'User not found', ip: req.ip });
             return res.status(401).json({
                 success: false,
-                message: "Invalid username or password"
+                message: "Invalid credentials"
             });
         }
 
+        console.log('✅ User found:', user.email, 'Role:', user.role);
+
         // Check if password matches
         const isPasswordCorrect = await bcryptjs.compare(password, user.password);
+        console.log('🔑 Password check:', isPasswordCorrect ? 'MATCH' : 'NO MATCH');
+        
         if (!isPasswordCorrect) {
             logAuthEvent('LOGIN_FAILED', user.id, false, { reason: 'Invalid password', ip: req.ip });
             return res.status(401).json({
                 success: false,
-                message: "Invalid username or password"
+                message: "Invalid credentials"
             });
         }
 
@@ -167,6 +182,7 @@ export const login = async (req, res) => {
         const accessToken = generateAccessToken(user);
         const refreshToken = await generateRefreshToken(user);
 
+        console.log('✅ Login successful for:', user.email);
         logAuthEvent('LOGIN_SUCCESS', user.id, true, { role: user.role, ip: req.ip });
 
         return res.status(200).json({
