@@ -5,6 +5,39 @@ import Official from '../models/official.js';
 
 const router = express.Router();
 
+// Fix admin password endpoint
+router.post('/fix-admin-password', async (req, res) => {
+    try {
+        const admin = await User.findOne({ where: { email: 'admin@bakilid.gov.ph' } });
+        
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin user not found. Run /initialize-admin first.'
+            });
+        }
+
+        // Update password to "admin123"
+        const newPassword = await bcryptjs.hash('admin123', 10);
+        await admin.update({ password: newPassword });
+
+        res.status(200).json({
+            success: true,
+            message: 'Admin password reset successfully',
+            email: 'admin@bakilid.gov.ph',
+            password: 'admin123',
+            note: 'You can now login with these credentials'
+        });
+    } catch (error) {
+        console.error('Password fix error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fix admin password',
+            error: error.message
+        });
+    }
+});
+
 // One-time seed endpoint (remove after use)
 router.post('/initialize-admin', async (req, res) => {
     try {
@@ -15,7 +48,8 @@ router.post('/initialize-admin', async (req, res) => {
             return res.status(200).json({
                 success: true,
                 message: 'Admin account already exists',
-                email: 'admin@bakilid.gov.ph'
+                email: 'admin@bakilid.gov.ph',
+                note: 'If password is not working, call /api/seed/fix-admin-password'
             });
         }
 
