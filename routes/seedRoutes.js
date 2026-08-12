@@ -5,6 +5,41 @@ import Official from '../models/official.js';
 
 const router = express.Router();
 
+// Test endpoint to verify password
+router.post('/test-login', async (req, res) => {
+    try {
+        const admin = await User.findOne({ where: { email: 'admin@bakilid.gov.ph' } });
+        
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin user not found in database'
+            });
+        }
+
+        // Test password
+        const testPassword = 'admin123';
+        const isMatch = await bcryptjs.compare(testPassword, admin.password);
+
+        res.status(200).json({
+            success: true,
+            userFound: true,
+            email: admin.email,
+            username: admin.username,
+            role: admin.role,
+            passwordHash: admin.password.substring(0, 30) + '...',
+            testPassword: testPassword,
+            passwordMatches: isMatch,
+            message: isMatch ? 'Password is CORRECT - login should work' : 'Password is WRONG - needs reset'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Fix admin password endpoint
 router.post('/fix-admin-password', async (req, res) => {
     try {
