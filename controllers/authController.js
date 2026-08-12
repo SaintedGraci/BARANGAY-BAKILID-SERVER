@@ -72,15 +72,17 @@ export const register = async (req, res) => {
             isVerified: false // User needs admin approval
         });
 
-        // Handle file uploads from ImgBB
+        // Handle file uploads from R2
         let validIdPath = null;
         let proofOfResidencyPath = null;
         
         try {
-            validIdPath = req.files?.validId?.[0]?.imgbbUrl || null;
-            proofOfResidencyPath = req.files?.proofOfResidency?.[0]?.imgbbUrl || null;
+            validIdPath = req.files?.validId?.[0]?.r2Url || null;
+            proofOfResidencyPath = req.files?.proofOfResidency?.[0]?.r2Url || null;
+            
+            console.log('✅ R2 Upload successful:', { validIdPath, proofOfResidencyPath });
         } catch (uploadError) {
-            console.log('File upload warning during registration:', uploadError.message);
+            console.log('⚠️  File upload warning during registration:', uploadError.message);
         }
 
         // Create resident profile

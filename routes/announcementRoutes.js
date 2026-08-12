@@ -8,7 +8,7 @@ import {
 } from "../controllers/announcementController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
-import { upload } from "../config/imgbb.js";
+import { uploadToR2Middleware } from "../middleware/r2UploadMiddleware.js";
 
 const router = express.Router();
 
@@ -82,7 +82,7 @@ router.use(authMiddleware);
  *       403:
  *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.post("/", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), createAnnouncement);
+router.post("/", roleMiddleware(["admin", "captain", "secretary"]), uploadToR2Middleware('image'), createAnnouncement);
 
 /**
  * @swagger
@@ -109,7 +109,7 @@ router.post("/", roleMiddleware(["admin", "captain", "secretary"]), upload.singl
  *       403:
  *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), updateAnnouncement);
+router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), uploadToR2Middleware('image'), updateAnnouncement);
 
 /**
  * @swagger

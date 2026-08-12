@@ -56,15 +56,10 @@ export const createAnnouncement = async (req, res) => {
             expiryDate: expiryDate || null,
         };
 
-        // Upload image to ImgBB if file present
-        if (req.file) {
-            try {
-                const imageUrl = await uploadToImgBB(req.file.buffer, req.file.originalname);
-                announcementData.imagePath = imageUrl;
-                logger.info('  ✅ Image uploaded to ImgBB:', imageUrl);
-            } catch (uploadError) {
-                logger.error('  ❌ Image upload failed:', uploadError.message);
-            }
+        // Get R2 URL if file present
+        if (req.file && req.file.r2Url) {
+            announcementData.imagePath = req.file.r2Url;
+            logger.info('  ✅ Image uploaded to R2:', req.file.r2Url);
         }
 
         const newAnnouncement = await Announcement.create(announcementData);
@@ -99,15 +94,10 @@ export const updateAnnouncement = async (req, res) => {
             expiryDate: expiryDate ?? announcement.expiryDate,
         };
 
-        // Upload new image to ImgBB if provided
-        if (req.file) {
-            try {
-                const imageUrl = await uploadToImgBB(req.file.buffer, req.file.originalname);
-                updateData.imagePath = imageUrl;
-                logger.info('  ✅ Image updated on ImgBB:', imageUrl);
-            } catch (uploadError) {
-                logger.error('  ❌ Image upload failed:', uploadError.message);
-            }
+        // Get R2 URL if new file uploaded
+        if (req.file && req.file.r2Url) {
+            updateData.imagePath = req.file.r2Url;
+            logger.info('  ✅ Image updated on R2:', req.file.r2Url);
         }
 
         await announcement.update(updateData);

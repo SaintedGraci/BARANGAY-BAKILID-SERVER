@@ -1,7 +1,7 @@
 import express from "express";
 import { register, login, refreshToken, logout } from "../controllers/authController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-import { imgbbUploadHandler } from "../config/imgbb.js";
+import { uploadToR2Middleware } from "../middleware/r2UploadMiddleware.js";
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from "../middleware/rateLimitMiddleware.js";
 import { registerValidation, loginValidation, refreshTokenValidation, handleValidationErrors } from "../validators/authValidators.js";
 
@@ -90,7 +90,10 @@ const router = express.Router();
  */
 router.post("/register", 
     registerLimiter, 
-    imgbbUploadHandler,
+    uploadToR2Middleware([
+        { name: 'validId', maxCount: 1 },
+        { name: 'proofOfResidency', maxCount: 1 }
+    ]),
     registerValidation,
     handleValidationErrors,
     register
