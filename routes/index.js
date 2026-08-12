@@ -10,6 +10,7 @@ import healthRoutes from "./healthRoutes.js";
 import logsRoutes from "./logsRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
 import userManagementRoutes from "./userManagementRoutes.js";
+import seedRoutes from "./seedRoutes.js";
 
 const router = express.Router();
 
@@ -25,5 +26,6 @@ router.use("/health", healthRoutes);
 router.use("/logs", logsRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/admin/users", userManagementRoutes);
+router.use("/seed", seedRoutes); // One-time seed endpoint
 
 export default router;
