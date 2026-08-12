@@ -7,15 +7,15 @@ dotenv.config();
 // Cloudflare R2 Configuration (S3-compatible)
 const r2Client = new S3Client({
     region: 'auto',
-    endpoint: process.env.R2_ENDPOINT,
+    endpoint: process.env.R2_ENDPOINT?.trim(),
     credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+        accessKeyId: process.env.R2_ACCESS_KEY_ID?.trim(),
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY?.trim(),
     },
 });
 
-const BUCKET_NAME = process.env.R2_BUCKET_NAME || 'barangay-bakilid-documents';
-const PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-ccad0830e7364a25afd38860dbe7d923.r2.dev';
+const BUCKET_NAME = process.env.R2_BUCKET_NAME?.trim() || 'barangay-bakilid-documents';
+const PUBLIC_URL = process.env.R2_PUBLIC_URL?.trim() || 'https://pub-ccad0830e7364a25afd38860dbe7d923.r2.dev';
 
 /**
  * Upload file to Cloudflare R2
