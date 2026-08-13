@@ -25,6 +25,7 @@ import Announcement from "./models/announcement.js";
 import Notification from "./models/notification.js";
 import RefreshToken from "./models/refreshToken.js";
 import RevokedToken from "./models/revokedToken.js";
+import Image from "./models/image.js";
 
 // Import routes
 import apiRoutes from "./routes/index.js";

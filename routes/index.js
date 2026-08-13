@@ -11,6 +11,7 @@ import logsRoutes from "./logsRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
 import userManagementRoutes from "./userManagementRoutes.js";
 import seedRoutes from "./seedRoutes.js";
+import imageRoutes from "./imageRoutes.js";
 
 const router = express.Router();
 
@@ -27,5 +28,6 @@ router.use("/logs", logsRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/admin/users", userManagementRoutes);
 router.use("/seed", seedRoutes); // One-time seed endpoint
+router.use("/images", imageRoutes); // Image optimization and management
 
 export default router;
