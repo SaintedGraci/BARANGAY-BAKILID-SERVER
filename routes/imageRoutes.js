@@ -1,7 +1,7 @@
 import express from 'express';
 import { uploadImage, getImages, getImageById, deleteImage } from '../controllers/imageController.js';
 import { uploadToR2Middleware } from '../middleware/r2UploadMiddleware.js';
-import { authenticate } from '../middleware/authMiddleware.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ const router = express.Router();
  * @body    { category?, relatedType?, relatedId? }
  * @file    image file (multipart/form-data)
  */
-router.post('/upload', authenticate, uploadToR2Middleware('image'), uploadImage);
+router.post('/upload', authMiddleware, uploadToR2Middleware('image'), uploadImage);
 
 /**
  * @route   GET /api/images
@@ -20,14 +20,14 @@ router.post('/upload', authenticate, uploadToR2Middleware('image'), uploadImage)
  * @access  Private
  * @query   { category?, relatedType?, relatedId?, limit?, offset? }
  */
-router.get('/', authenticate, getImages);
+router.get('/', authMiddleware, getImages);
 
 /**
  * @route   GET /api/images/:id
  * @desc    Get a single image by ID
  * @access  Private
  */
-router.get('/:id', authenticate, getImageById);
+router.get('/:id', authMiddleware, getImageById);
 
 /**
  * @route   DELETE /api/images/:id
@@ -35,6 +35,6 @@ router.get('/:id', authenticate, getImageById);
  * @access  Private
  * @query   { hardDelete? }
  */
-router.delete('/:id', authenticate, deleteImage);
+router.delete('/:id', authMiddleware, deleteImage);
 
 export default router;
