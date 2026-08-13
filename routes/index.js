@@ -12,6 +12,7 @@ import analyticsRoutes from "./analyticsRoutes.js";
 import userManagementRoutes from "./userManagementRoutes.js";
 import seedRoutes from "./seedRoutes.js";
 import imageRoutes from "./imageRoutes.js";
+import weatherRoutes from "./weatherRoutes.js";
 
 const router = express.Router();
 
@@ -29,5 +30,6 @@ router.use("/analytics", analyticsRoutes);
 router.use("/admin/users", userManagementRoutes);
 router.use("/seed", seedRoutes); // One-time seed endpoint
 router.use("/images", imageRoutes); // Image optimization and management
+router.use("/weather", weatherRoutes); // Weather widget data
 
 export default router;
