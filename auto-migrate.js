@@ -80,6 +80,49 @@ export async function autoMigrate() {
       logger.info('✓ Users table fullName column already exists');
     }
 
+    // Check if images table exists (TASK8)
+    const [imageTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'images';
+    `);
+
+    if (imageTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating images table for TASK8...');
+      
+      await sequelize.query(`
+        CREATE TABLE images (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          original_name VARCHAR(255) NOT NULL COMMENT 'Original filename uploaded by user',
+          r2_key VARCHAR(500) NOT NULL UNIQUE COMMENT 'Unique key/path in R2 bucket',
+          url VARCHAR(1000) NOT NULL COMMENT 'Public CDN URL for the image',
+          width INT NULL COMMENT 'Image width in pixels after optimization',
+          height INT NULL COMMENT 'Image height in pixels after optimization',
+          size INT NOT NULL COMMENT 'File size in bytes after optimization',
+          mimetype VARCHAR(50) NOT NULL DEFAULT 'image/webp' COMMENT 'MIME type (should be image/webp)',
+          category VARCHAR(100) NULL COMMENT 'Category/folder: announcements, documents, profiles, etc.',
+          related_type VARCHAR(100) NULL COMMENT 'Related entity type: Announcement, Resident, Request, etc.',
+          related_id INT NULL COMMENT 'ID of the related entity',
+          uploaded_by INT NULL COMMENT 'User ID who uploaded the image',
+          is_deleted BOOLEAN DEFAULT FALSE COMMENT 'Soft delete flag',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_r2_key (r2_key),
+          INDEX idx_category (category),
+          INDEX idx_related (related_type, related_id),
+          INDEX idx_uploaded_by (uploaded_by),
+          INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Stores optimized image metadata for Cloudflare R2 storage';
+      `);
+      
+      logger.info('✅ Migration completed: images table created successfully');
+      logger.info('📸 TASK8 image optimization system is now active');
+    } else {
+      logger.info('✓ Images table already exists (TASK8)');
+    }
+
   } catch (error) {
     logger.error('❌ Auto-migration error:', error.message);
     // Don't crash the server, just log the error
