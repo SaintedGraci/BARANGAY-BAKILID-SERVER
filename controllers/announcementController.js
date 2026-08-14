@@ -134,3 +134,51 @@ export const deleteAnnouncement = async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 };
+
+export const togglePinAnnouncement = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const announcement = await Announcement.findByPk(id);
+        if (!announcement) {
+            return res.status(404).json({ message: "Announcement not found" });
+        }
+
+        // Toggle pin status
+        announcement.isPinned = !announcement.isPinned;
+        await announcement.save();
+
+        return res.status(200).json({
+            success: true,
+            message: announcement.isPinned ? "Announcement pinned successfully" : "Announcement unpinned successfully",
+            data: announcement,
+        });
+    } catch (error) {
+        logger.error("Toggle pin announcement error:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const archiveAnnouncement = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const announcement = await Announcement.findByPk(id);
+        if (!announcement) {
+            return res.status(404).json({ message: "Announcement not found" });
+        }
+
+        // Update status to Archived
+        announcement.status = "Archived";
+        await announcement.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Announcement archived successfully",
+            data: announcement,
+        });
+    } catch (error) {
+        logger.error("Archive announcement error:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};

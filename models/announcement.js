@@ -38,6 +38,16 @@ const Announcement = sequelize.define("Announcement", {
         allowNull: true,
     },
 
+    isPinned: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+
+    category: {
+        type: DataTypes.ENUM("General", "Event", "Advisory", "Emergency", "Community"),
+        defaultValue: "General",
+    },
+
 });
 
 export default Announcement;

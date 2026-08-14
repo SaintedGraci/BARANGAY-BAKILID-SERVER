@@ -4,7 +4,9 @@ import {
     getAnnouncementById, 
     createAnnouncement, 
     updateAnnouncement, 
-    deleteAnnouncement 
+    deleteAnnouncement,
+    togglePinAnnouncement,
+    archiveAnnouncement 
 } from "../controllers/announcementController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -132,5 +134,49 @@ router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), uploadToR2
  *         description: Admin or Captain role required
  */
 router.delete("/:id", roleMiddleware(["admin", "captain"]), deleteAnnouncement);
+
+/**
+ * @swagger
+ * /api/announcements/{id}/pin:
+ *   patch:
+ *     summary: Toggle pin status of an announcement
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Pin status toggled
+ *       403:
+ *         description: Captain, Secretary, or Admin only
+ */
+router.patch("/:id/pin", roleMiddleware(["admin", "captain", "secretary"]), togglePinAnnouncement);
+
+/**
+ * @swagger
+ * /api/announcements/{id}/archive:
+ *   patch:
+ *     summary: Archive an announcement
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Announcement archived
+ *       403:
+ *         description: Captain, Secretary, or Admin only
+ */
+router.patch("/:id/archive", roleMiddleware(["admin", "captain", "secretary"]), archiveAnnouncement);
 
 export default router;
