@@ -54,6 +54,8 @@ export const createAnnouncement = async (req, res) => {
             status: status || "Active",
             priority: priority || "Medium",
             expiryDate: expiryDate || null,
+            isPinned: false,
+            category: "General",
         };
 
         // Get R2 URL if file present
@@ -72,7 +74,16 @@ export const createAnnouncement = async (req, res) => {
         });
     } catch (error) {
         logger.error("Create announcement error:", error);
-        return res.status(500).json({ message: "Server error" });
+        logger.error("Error details:", {
+            message: error.message,
+            stack: error.stack,
+            sql: error.sql,
+            original: error.original
+        });
+        return res.status(500).json({ 
+            message: "Server error", 
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
     }
 };
 
