@@ -123,6 +123,54 @@ export async function autoMigrate() {
       logger.info('✓ Images table already exists (TASK8)');
     }
 
+    // Check if isPinned column exists in Announcements (TASK10)
+    const [pinnedResults] = await sequelize.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Announcements' 
+        AND COLUMN_NAME = 'isPinned';
+    `);
+
+    if (pinnedResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Adding isPinned column to Announcements...');
+      
+      await sequelize.query(`
+        ALTER TABLE Announcements 
+        ADD COLUMN isPinned BOOLEAN DEFAULT FALSE NOT NULL 
+        AFTER imagePath;
+      `);
+      
+      logger.info('✅ Migration completed: isPinned column added to Announcements');
+    } else {
+      logger.info('✓ Announcements isPinned column already exists');
+    }
+
+    // Check if category column exists in Announcements (TASK10)
+    const [categoryResults] = await sequelize.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Announcements' 
+        AND COLUMN_NAME = 'category';
+    `);
+
+    if (categoryResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Adding category column to Announcements...');
+      
+      await sequelize.query(`
+        ALTER TABLE Announcements 
+        ADD COLUMN category ENUM('General', 'Event', 'Advisory', 'Emergency', 'Community') 
+        DEFAULT 'General' 
+        AFTER isPinned;
+      `);
+      
+      logger.info('✅ Migration completed: category column added to Announcements');
+      logger.info('📢 TASK10 modern announcement feed is now active');
+    } else {
+      logger.info('✓ Announcements category column already exists');
+    }
+
   } catch (error) {
     logger.error('❌ Auto-migration error:', error.message);
     // Don't crash the server, just log the error
