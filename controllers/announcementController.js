@@ -1,6 +1,7 @@
 import Announcement from "../models/announcement.js";
 import Image from "../models/image.js";
 import { uploadImageWithVariants } from "../config/r2.js";
+import { convertObjectUrls } from "../utils/imageProxy.js";
 import logger from "../config/logger.js";
 
 export const getAllAnnouncements = async (req, res) => {
@@ -9,9 +10,15 @@ export const getAllAnnouncements = async (req, res) => {
             order: [["createdAt", "DESC"]],
         });
 
+        // Convert R2 URLs to proxy URLs to bypass DNS issues
+        const convertedAnnouncements = announcements.map(ann => {
+            const plain = ann.get({ plain: true });
+            return convertObjectUrls(plain);
+        });
+
         return res.status(200).json({
             success: true,
-            data: announcements,
+            data: convertedAnnouncements,
         });
     } catch (error) {
         console.error("Get announcements error:", error);

@@ -13,6 +13,7 @@ import userManagementRoutes from "./userManagementRoutes.js";
 import seedRoutes from "./seedRoutes.js";
 import imageRoutes from "./imageRoutes.js";
 import weatherRoutes from "./weatherRoutes.js";
+import proxyRoutes from "./proxyRoutes.js";
 
 const router = express.Router();
 
@@ -31,5 +32,6 @@ router.use("/admin/users", userManagementRoutes);
 router.use("/seed", seedRoutes); // One-time seed endpoint
 router.use("/images", imageRoutes); // Image optimization and management
 router.use("/weather", weatherRoutes); // Weather widget data
+router.use("/proxy", proxyRoutes); // R2 image proxy (bypass R2 public URL issues)
 
 export default router;
