@@ -1,4 +1,5 @@
 import Announcement from "../models/announcement.js";
+import Image from "../models/image.js";
 import { uploadImageWithVariants } from "../config/r2.js";
 import logger from "../config/logger.js";
 
@@ -88,6 +89,35 @@ export const createAnnouncement = async (req, res) => {
 
         const newAnnouncement = await Announcement.create(announcementData);
         logger.info('  ✅ Announcement created with ID:', newAnnouncement.id);
+
+        // Save image metadata to images table
+        if (req.file && announcementData.mediumUrl) {
+            try {
+                const variants = [
+                    { size: 'thumbnail', url: announcementData.thumbnailUrl },
+                    { size: 'medium', url: announcementData.mediumUrl },
+                    { size: 'large', url: announcementData.largeUrl }
+                ];
+
+                for (const variant of variants) {
+                    const r2Key = variant.url.replace(process.env.R2_PUBLIC_URL + '/', '');
+                    await Image.create({
+                        originalName: `${req.file.originalname}-${variant.size}`,
+                        r2Key: r2Key,
+                        url: variant.url,
+                        size: req.file.size,
+                        mimetype: 'image/webp',
+                        category: 'announcements',
+                        relatedType: 'Announcement',
+                        relatedId: newAnnouncement.id,
+                        uploadedBy: req.user?.id || null,
+                    });
+                }
+                logger.info('  ✅ Image metadata saved to database');
+            } catch (dbError) {
+                logger.warn('  ⚠️ Failed to save image metadata:', dbError.message);
+            }
+        }
 
         return res.status(201).json({
             success: true,

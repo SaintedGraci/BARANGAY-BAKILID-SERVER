@@ -2,6 +2,7 @@ import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 import Resident from "../models/resident.js";
+import Image from "../models/image.js";
 import RefreshToken from "../models/refreshToken.js";
 import RevokedToken from "../models/revokedToken.js";
 import crypto from "crypto";
@@ -101,6 +102,46 @@ export const register = async (req, res) => {
             proofOfResidencyPath,
             verificationStatus: 'pending'
         });
+
+        // Save document image metadata to images table
+        if (validIdPath || proofOfResidencyPath) {
+            try {
+                if (validIdPath && req.files?.validId?.[0]) {
+                    const file = req.files.validId[0];
+                    const r2Key = file.r2Key || validIdPath.replace(process.env.R2_PUBLIC_URL + '/', '');
+                    await Image.create({
+                        originalName: file.originalname || 'valid-id',
+                        r2Key: r2Key,
+                        url: validIdPath,
+                        size: file.size || 0,
+                        mimetype: file.mimetype || 'image/webp',
+                        category: 'documents',
+                        relatedType: 'Resident',
+                        relatedId: null, // Will be linked later after resident approval
+                        uploadedBy: newUser.id,
+                    });
+                }
+                
+                if (proofOfResidencyPath && req.files?.proofOfResidency?.[0]) {
+                    const file = req.files.proofOfResidency[0];
+                    const r2Key = file.r2Key || proofOfResidencyPath.replace(process.env.R2_PUBLIC_URL + '/', '');
+                    await Image.create({
+                        originalName: file.originalname || 'proof-of-residency',
+                        r2Key: r2Key,
+                        url: proofOfResidencyPath,
+                        size: file.size || 0,
+                        mimetype: file.mimetype || 'image/webp',
+                        category: 'documents',
+                        relatedType: 'Resident',
+                        relatedId: null,
+                        uploadedBy: newUser.id,
+                    });
+                }
+                console.log('✅ Document metadata saved to images table');
+            } catch (dbError) {
+                console.warn('⚠️ Failed to save document metadata:', dbError.message);
+            }
+        }
 
         logAuthEvent('REGISTRATION_SUCCESS', newUser.id, true, { email, username });
 
