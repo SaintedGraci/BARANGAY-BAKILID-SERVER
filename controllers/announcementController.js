@@ -47,9 +47,9 @@ export const getAnnouncementById = async (req, res) => {
 
 export const createAnnouncement = async (req, res) => {
     try {
-        const { title, description, status, priority, expiryDate } = req.body;
+        const { title, description, status, category, expiryDate } = req.body;
 
-        logger.info('📝 Create Announcement Request:', { title, description, status, priority, expiryDate });
+        logger.info('📝 Create Announcement Request:', { title, description, status, category, expiryDate });
         logger.info('  - File:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : 'No file');
 
         if (!title || !description) {
@@ -60,10 +60,9 @@ export const createAnnouncement = async (req, res) => {
             title,
             description,
             status: status || "Active",
-            priority: priority || "Medium",
+            category: category || "General",
             expiryDate: expiryDate || null,
             isPinned: false,
-            category: "General",
         };
 
         // Upload image with variants (thumbnail, medium, large) for responsive loading
@@ -149,7 +148,7 @@ export const createAnnouncement = async (req, res) => {
 export const updateAnnouncement = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, status, priority, expiryDate } = req.body;
+        const { title, description, status, category, expiryDate } = req.body;
 
         const announcement = await Announcement.findByPk(id);
         if (!announcement) {
@@ -160,7 +159,7 @@ export const updateAnnouncement = async (req, res) => {
             title: title ?? announcement.title,
             description: description ?? announcement.description,
             status: status ?? announcement.status,
-            priority: priority ?? announcement.priority,
+            category: category ?? announcement.category,
             expiryDate: expiryDate ?? announcement.expiryDate,
         };
 

@@ -60,7 +60,7 @@ const Announcement = sequelize.define("Announcement", {
     },
 
     category: {
-        type: DataTypes.ENUM("General", "Event", "Advisory", "Emergency", "Community"),
+        type: DataTypes.ENUM("General", "Emergency", "Important", "Events", "Advisories"),
         defaultValue: "General",
     },
 

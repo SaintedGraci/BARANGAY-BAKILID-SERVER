@@ -213,6 +213,40 @@ export async function autoMigrate() {
       logger.info('✓ Announcements image variant columns already exist (TASK11)');
     }
 
+    // Update Announcements category enum to match UI tabs
+    const [categoryEnumCheck] = await sequelize.query(`
+      SELECT COLUMN_TYPE 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Announcements' 
+        AND COLUMN_NAME = 'category';
+    `);
+
+    if (categoryEnumCheck.length > 0) {
+      const currentEnum = categoryEnumCheck[0].COLUMN_TYPE;
+      // Check if enum needs updating (doesn't have new values)
+      if (!currentEnum.includes('Important') || !currentEnum.includes('Advisories')) {
+        logger.info('⚙️ Running automatic migration: Updating category enum to match UI...');
+        
+        await sequelize.query(`
+          ALTER TABLE Announcements 
+          MODIFY COLUMN category 
+          ENUM('General', 'Emergency', 'Important', 'Events', 'Advisories') 
+          DEFAULT 'General';
+        `);
+        
+        // Map old values to new ones
+        await sequelize.query(`UPDATE Announcements SET category = 'Events' WHERE category = 'Event'`);
+        await sequelize.query(`UPDATE Announcements SET category = 'Advisories' WHERE category = 'Advisory'`);
+        await sequelize.query(`UPDATE Announcements SET category = 'General' WHERE category = 'Community'`);
+        
+        logger.info('✅ Migration completed: Category enum updated to match UI tabs');
+        logger.info('   Categories: General, Emergency, Important, Events, Advisories');
+      } else {
+        logger.info('✓ Announcements category enum is up to date');
+      }
+    }
+
   } catch (error) {
     logger.error('❌ Auto-migration error:', error.message);
     // Don't crash the server, just log the error
