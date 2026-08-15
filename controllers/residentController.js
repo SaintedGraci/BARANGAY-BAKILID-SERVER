@@ -3,6 +3,7 @@ import User from "../models/user.js";
 import bcrypt from "bcryptjs";
 import { paginateQuery } from "../utils/pagination.js";
 import APIResponse from "../utils/apiResponse.js";
+import { convertObjectUrls } from "../utils/imageProxy.js";
 
 export const getAllResidents = async (req, res) => {
     try {
@@ -22,7 +23,13 @@ export const getAllResidents = async (req, res) => {
             limit
         );
         
-        return APIResponse.success(res, { residents, pagination }, 'Residents retrieved successfully');
+        // Convert R2 URLs to proxy URLs for documents
+        const convertedResidents = residents.map(resident => {
+            const plain = resident.get({ plain: true });
+            return convertObjectUrls(plain);
+        });
+        
+        return APIResponse.success(res, { residents: convertedResidents, pagination }, 'Residents retrieved successfully');
     } catch (error) {
         console.error("Get all residents error:", error);
         return APIResponse.serverError(res, "Failed to retrieve residents", error);
@@ -36,7 +43,12 @@ export const getResidentById = async (req, res) => {
         if (!resident) {
             return res.status(404).json({ message: "Resident not found" });
         }
-        return res.status(200).json(resident);
+        
+        // Convert R2 URLs to proxy URLs
+        const plain = resident.get({ plain: true });
+        const converted = convertObjectUrls(plain);
+        
+        return res.status(200).json(converted);
     } catch (error) {
         console.error("Get resident error:", error);
         return res.status(500).json({ message: "Server error" });
@@ -226,9 +238,15 @@ export const getPendingVerifications = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
         
+        // Convert R2 URLs to proxy URLs for verification documents
+        const convertedResidents = pendingResidents.map(resident => {
+            const plain = resident.get({ plain: true });
+            return convertObjectUrls(plain);
+        });
+        
         return res.status(200).json({
             success: true,
-            data: pendingResidents
+            data: convertedResidents
         });
     } catch (error) {
         console.error("Get pending verifications error:", error);
