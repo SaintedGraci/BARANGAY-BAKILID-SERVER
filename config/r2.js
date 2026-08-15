@@ -19,33 +19,88 @@ const BUCKET_NAME = process.env.R2_BUCKET_NAME?.trim() || 'barangay-bakilid-docu
 const PUBLIC_URL = process.env.R2_PUBLIC_URL?.trim() || 'https://pub-ccad0830e7364a25afd38860dbe7d923.r2.dev';
 
 // Image optimization settings
-const IMAGE_MAX_WIDTH = 1200;
+const IMAGE_SIZES = {
+    thumbnail: { width: 400, quality: 75 },
+    medium: { width: 800, quality: 80 },
+    large: { width: 1200, quality: 85 },
+};
 const WEBP_QUALITY = 80;
 
 /**
- * Optimize image buffer using sharp
- * - Resize to max width of 1200px (maintains aspect ratio, doesn't enlarge)
- * - Convert to WebP format at 80% quality
+ * Create multiple optimized versions of an image
  * @param {Buffer} buffer - Original image buffer
+ * @param {Array<string>} sizes - Array of size names ['thumbnail', 'medium', 'large']
+ * @returns {Promise<Object>} - Object with size name as key and {buffer, width, height} as value
+ */
+export const createImageVariants = async (buffer, sizes = ['medium']) => {
+    try {
+        const image = sharp(buffer);
+        const metadata = await image.metadata();
+        const variants = {};
+
+        console.log(`📸 Creating ${sizes.length} variant(s) from ${metadata.width}x${metadata.height} image`);
+
+        for (const sizeName of sizes) {
+            const sizeConfig = IMAGE_SIZES[sizeName];
+            if (!sizeConfig) {
+                console.warn(`⚠️  Unknown size: ${sizeName}, skipping`);
+                continue;
+            }
+
+            // Only resize if original is larger than target
+            let resizedImage = image;
+            if (metadata.width > sizeConfig.width) {
+                resizedImage = image.resize(sizeConfig.width, null, {
+                    fit: 'inside',
+                    withoutEnlargement: true,
+                });
+            }
+
+            const optimizedBuffer = await resizedImage
+                .webp({ quality: sizeConfig.quality })
+                .toBuffer();
+
+            const optimizedMetadata = await sharp(optimizedBuffer).metadata();
+
+            variants[sizeName] = {
+                buffer: optimizedBuffer,
+                width: optimizedMetadata.width,
+                height: optimizedMetadata.height,
+                size: optimizedBuffer.length,
+            };
+
+            console.log(`   - ${sizeName}: ${optimizedMetadata.width}x${optimizedMetadata.height} (${(optimizedBuffer.length / 1024).toFixed(2)}KB)`);
+        }
+
+        return variants;
+    } catch (error) {
+        console.error('❌ Image variant creation error:', error);
+        throw new Error(`Image variant creation failed: ${error.message}`);
+    }
+};
+
+/**
+ * Optimize single image buffer using sharp (legacy support)
+ * @param {Buffer} buffer - Original image buffer
+ * @param {number} maxWidth - Maximum width (default: 1200)
+ * @param {number} quality - WebP quality (default: 80)
  * @returns {Promise<{buffer: Buffer, width: number, height: number}>}
  */
-export const optimizeImage = async (buffer) => {
+export const optimizeImage = async (buffer, maxWidth = 1200, quality = 80) => {
     try {
         const image = sharp(buffer);
         const metadata = await image.metadata();
 
-        // Only resize if image is wider than max width
         let resizedImage = image;
-        if (metadata.width > IMAGE_MAX_WIDTH) {
-            resizedImage = image.resize(IMAGE_MAX_WIDTH, null, {
+        if (metadata.width > maxWidth) {
+            resizedImage = image.resize(maxWidth, null, {
                 fit: 'inside',
                 withoutEnlargement: true,
             });
         }
 
-        // Convert to WebP with quality setting
         const optimizedBuffer = await resizedImage
-            .webp({ quality: WEBP_QUALITY })
+            .webp({ quality })
             .toBuffer();
 
         const optimizedMetadata = await sharp(optimizedBuffer).metadata();
@@ -70,6 +125,76 @@ export const optimizeImage = async (buffer) => {
  */
 export const isImage = (mimetype) => {
     return mimetype && mimetype.startsWith('image/');
+};
+
+/**
+ * Upload image with multiple variants (thumbnail, medium, large) to R2
+ * @param {Buffer} fileBuffer - File buffer
+ * @param {string} originalName - Original filename
+ * @param {string} mimetype - File MIME type
+ * @param {string} folder - Folder path (e.g., 'announcements')
+ * @param {Array<string>} sizes - Sizes to create ['thumbnail', 'medium', 'large']
+ * @returns {Promise<{thumbnail: string, medium: string, large: string, metadata: Object}>}
+ */
+export const uploadImageWithVariants = async (fileBuffer, originalName, mimetype, folder = 'announcements', sizes = ['thumbnail', 'medium', 'large']) => {
+    try {
+        if (!isImage(mimetype)) {
+            throw new Error('File must be an image');
+        }
+
+        // Create image variants
+        const variants = await createImageVariants(fileBuffer, sizes);
+        
+        // Generate base filename (unique)
+        const timestamp = Date.now();
+        const hash = crypto.randomBytes(8).toString('hex');
+        const baseFilename = `${folder}/${timestamp}-${hash}`;
+
+        const uploadedVariants = {};
+        const variantMetadata = {};
+
+        // Upload each variant
+        for (const [sizeName, variantData] of Object.entries(variants)) {
+            const key = `${baseFilename}-${sizeName}.webp`;
+            
+            const command = new PutObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: key,
+                Body: variantData.buffer,
+                ContentType: 'image/webp',
+                CacheControl: 'public, max-age=31536000, immutable, stale-while-revalidate=86400',
+                Metadata: {
+                    'original-name': originalName,
+                    'upload-date': new Date().toISOString(),
+                    'variant': sizeName,
+                    'width': variantData.width.toString(),
+                    'height': variantData.height.toString(),
+                }
+            });
+
+            await r2Client.send(command);
+            
+            const url = `${PUBLIC_URL}/${key}`;
+            uploadedVariants[sizeName] = url;
+            variantMetadata[sizeName] = {
+                url,
+                key,
+                width: variantData.width,
+                height: variantData.height,
+                size: variantData.size,
+            };
+
+            console.log(`✅ Uploaded ${sizeName}: ${url}`);
+        }
+
+        return {
+            ...uploadedVariants,
+            metadata: variantMetadata,
+        };
+    } catch (error) {
+        console.error('❌ Image variant upload error:', error);
+        throw new Error(`Image variant upload failed: ${error.message}`);
+    }
 };
 
 /**
@@ -108,8 +233,18 @@ export const uploadToR2 = async (fileBuffer, originalName, mimetype, folder = 'd
             Key: uniqueName,
             Body: uploadBuffer,
             ContentType: finalMimetype,
-            // Cache control for optimal edge caching (1 year)
-            CacheControl: 'public, max-age=31536000, immutable',
+            // Aggressive cache control for optimal performance
+            // - public: Can be cached by CDN and browsers
+            // - max-age=31536000: Cache for 1 year (immutable files)
+            // - immutable: File will never change (unique filename ensures this)
+            // - stale-while-revalidate: Serve stale content while revalidating
+            CacheControl: 'public, max-age=31536000, immutable, stale-while-revalidate=86400',
+            // Set metadata for better debugging
+            Metadata: {
+                'original-name': originalName,
+                'upload-date': new Date().toISOString(),
+                'optimized': optimize ? 'true' : 'false',
+            }
         });
 
         await r2Client.send(command);
@@ -183,4 +318,12 @@ export const testR2Connection = async () => {
     }
 };
 
-export default { uploadToR2, deleteFromR2, getKeyFromUrl, optimizeImage, testR2Connection };
+export default { 
+    uploadToR2, 
+    uploadImageWithVariants,
+    deleteFromR2, 
+    getKeyFromUrl, 
+    optimizeImage, 
+    createImageVariants,
+    testR2Connection 
+};

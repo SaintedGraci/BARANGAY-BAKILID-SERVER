@@ -1,5 +1,5 @@
 import Announcement from "../models/announcement.js";
-import { uploadToImgBB } from "../config/imgbb.js";
+import { uploadImageWithVariants } from "../config/r2.js";
 import logger from "../config/logger.js";
 
 export const getAllAnnouncements = async (req, res) => {
@@ -58,10 +58,32 @@ export const createAnnouncement = async (req, res) => {
             category: "General",
         };
 
-        // Get R2 URL if file present
-        if (req.file && req.file.r2Url) {
-            announcementData.imagePath = req.file.r2Url;
-            logger.info('  ✅ Image uploaded to R2:', req.file.r2Url);
+        // Upload image with variants (thumbnail, medium, large) for responsive loading
+        if (req.file && req.file.buffer) {
+            try {
+                const variants = await uploadImageWithVariants(
+                    req.file.buffer,
+                    req.file.originalname,
+                    req.file.mimetype,
+                    'announcements',
+                    ['thumbnail', 'medium', 'large']
+                );
+
+                // Store all variant URLs
+                announcementData.imagePath = variants.large; // Legacy field - use large as default
+                announcementData.thumbnailUrl = variants.thumbnail;
+                announcementData.mediumUrl = variants.medium;
+                announcementData.largeUrl = variants.large;
+
+                logger.info('  ✅ Image variants uploaded:', {
+                    thumbnail: variants.thumbnail,
+                    medium: variants.medium,
+                    large: variants.large
+                });
+            } catch (uploadError) {
+                logger.error('  ❌ Image upload failed:', uploadError.message);
+                // Continue without image rather than failing the whole announcement
+            }
         }
 
         const newAnnouncement = await Announcement.create(announcementData);
@@ -105,10 +127,30 @@ export const updateAnnouncement = async (req, res) => {
             expiryDate: expiryDate ?? announcement.expiryDate,
         };
 
-        // Get R2 URL if new file uploaded
-        if (req.file && req.file.r2Url) {
-            updateData.imagePath = req.file.r2Url;
-            logger.info('  ✅ Image updated on R2:', req.file.r2Url);
+        // Upload new image variants if new file uploaded
+        if (req.file && req.file.buffer) {
+            try {
+                const variants = await uploadImageWithVariants(
+                    req.file.buffer,
+                    req.file.originalname,
+                    req.file.mimetype,
+                    'announcements',
+                    ['thumbnail', 'medium', 'large']
+                );
+
+                updateData.imagePath = variants.large;
+                updateData.thumbnailUrl = variants.thumbnail;
+                updateData.mediumUrl = variants.medium;
+                updateData.largeUrl = variants.large;
+
+                logger.info('  ✅ Image variants updated:', {
+                    thumbnail: variants.thumbnail,
+                    medium: variants.medium,
+                    large: variants.large
+                });
+            } catch (uploadError) {
+                logger.error('  ❌ Image upload failed:', uploadError.message);
+            }
         }
 
         await announcement.update(updateData);

@@ -171,6 +171,48 @@ export async function autoMigrate() {
       logger.info('✓ Announcements category column already exists');
     }
 
+    // Check if thumbnailUrl column exists in Announcements (TASK11)
+    const [thumbnailResults] = await sequelize.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Announcements' 
+        AND COLUMN_NAME = 'thumbnailUrl';
+    `);
+
+    if (thumbnailResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Adding image variant columns to Announcements (TASK11)...');
+      
+      // Add thumbnailUrl column
+      await sequelize.query(`
+        ALTER TABLE Announcements 
+        ADD COLUMN thumbnailUrl VARCHAR(255) NULL 
+        AFTER imagePath;
+      `);
+      
+      // Add mediumUrl column
+      await sequelize.query(`
+        ALTER TABLE Announcements 
+        ADD COLUMN mediumUrl VARCHAR(255) NULL 
+        AFTER thumbnailUrl;
+      `);
+      
+      // Add largeUrl column
+      await sequelize.query(`
+        ALTER TABLE Announcements 
+        ADD COLUMN largeUrl VARCHAR(255) NULL 
+        AFTER mediumUrl;
+      `);
+      
+      logger.info('✅ Migration completed: Image variant columns added to Announcements');
+      logger.info('🖼️  TASK11 responsive image loading is now active');
+      logger.info('   - Thumbnail (400w), Medium (800w), Large (1200w)');
+      logger.info('   - WebP format with optimized quality');
+      logger.info('   - Browser-native responsive images with srcSet');
+    } else {
+      logger.info('✓ Announcements image variant columns already exist (TASK11)');
+    }
+
   } catch (error) {
     logger.error('❌ Auto-migration error:', error.message);
     // Don't crash the server, just log the error

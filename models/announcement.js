@@ -38,6 +38,22 @@ const Announcement = sequelize.define("Announcement", {
         allowNull: true,
     },
 
+    // Image variants for responsive loading
+    thumbnailUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+
+    mediumUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+
+    largeUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+
     isPinned: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,

@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import { 
     getAllAnnouncements, 
     getAnnouncementById, 
@@ -10,7 +11,23 @@ import {
 } from "../controllers/announcementController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
-import { uploadToR2Middleware } from "../middleware/r2UploadMiddleware.js";
+import { cacheShort } from "../middleware/cacheMiddleware.js";
+
+// Multer configuration for memory storage (no disk writes)
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only images allowed.'));
+        }
+    }
+});
 
 const router = express.Router();
 
@@ -25,7 +42,7 @@ const router = express.Router();
  *       200:
  *         description: Announcements retrieved successfully
  */
-router.get("/", getAllAnnouncements);
+router.get("/", cacheShort, getAllAnnouncements);
 
 /**
  * @swagger
@@ -46,7 +63,7 @@ router.get("/", getAllAnnouncements);
  *       404:
  *         description: Announcement not found
  */
-router.get("/:id", getAnnouncementById);
+router.get("/:id", cacheShort, getAnnouncementById);
 
 // Protected routes - require authentication
 router.use(authMiddleware);
@@ -84,7 +101,7 @@ router.use(authMiddleware);
  *       403:
  *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.post("/", roleMiddleware(["admin", "captain", "secretary"]), uploadToR2Middleware('image'), createAnnouncement);
+router.post("/", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), createAnnouncement);
 
 /**
  * @swagger
@@ -111,7 +128,7 @@ router.post("/", roleMiddleware(["admin", "captain", "secretary"]), uploadToR2Mi
  *       403:
  *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), uploadToR2Middleware('image'), updateAnnouncement);
+router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), updateAnnouncement);
 
 /**
  * @swagger
