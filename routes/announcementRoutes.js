@@ -51,30 +51,6 @@ router.get("/", cacheShort, getAllAnnouncements);
 
 /**
  * @swagger
- * /api/announcements/{id}:
- *   get:
- *     summary: Get announcement by ID
- *     tags: [Announcements]
- *     security: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Announcement details
- *       404:
- *         description: Announcement not found
- */
-router.get("/:id", cacheShort, getAnnouncementById);
-
-// Protected routes - require authentication
-router.use(authMiddleware);
-
-/**
- * @swagger
  * /api/announcements:
  *   post:
  *     summary: Create a new announcement
@@ -201,7 +177,67 @@ router.patch("/:id/pin", roleMiddleware(["admin", "captain", "secretary"]), togg
  */
 router.patch("/:id/archive", roleMiddleware(["admin", "captain", "secretary"]), archiveAnnouncement);
 
-// Reactions and comments routes
+// Reactions and comments routes - MUST come before /:id route to avoid conflicts
+/**
+ * @swagger
+ * /api/announcements/{id}/reactions:
+ *   get:
+ *     summary: Get reactions for announcement
+ *     tags: [Announcements]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Reactions retrieved
+ */
+router.get("/:id/reactions", getReactions);
+
+/**
+ * @swagger
+ * /api/announcements/{id}/comments:
+ *   get:
+ *     summary: Get comments for announcement
+ *     tags: [Announcements]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Comments retrieved
+ */
+router.get("/:id/comments", getComments);
+
+/**
+ * @swagger
+ * /api/announcements/{id}:
+ *   get:
+ *     summary: Get announcement by ID
+ *     tags: [Announcements]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Announcement details
+ *       404:
+ *         description: Announcement not found
+ */
+router.get("/:id", cacheShort, getAnnouncementById);
+
+// Protected routes - require authentication
+router.use(authMiddleware);
+
 /**
  * @swagger
  * /api/announcements/{id}/react:
@@ -221,24 +257,6 @@ router.patch("/:id/archive", roleMiddleware(["admin", "captain", "secretary"]), 
  *         description: Reaction toggled
  */
 router.post("/:id/react", toggleReaction);
-
-/**
- * @swagger
- * /api/announcements/{id}/reactions:
- *   get:
- *     summary: Get reactions for announcement
- *     tags: [Announcements]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Reactions retrieved
- */
-router.get("/:id/reactions", getReactions);
 
 /**
  * @swagger
@@ -270,24 +288,6 @@ router.get("/:id/reactions", getReactions);
  *         description: Comment added
  */
 router.post("/:id/comments", addComment);
-
-/**
- * @swagger
- * /api/announcements/{id}/comments:
- *   get:
- *     summary: Get comments for announcement
- *     tags: [Announcements]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Comments retrieved
- */
-router.get("/:id/comments", getComments);
 
 /**
  * @swagger
