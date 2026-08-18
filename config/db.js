@@ -11,12 +11,21 @@ const sequelize = new Sequelize(
     {
         host: process.env.DB_HOST || "localhost",
         dialect: process.env.DB_DIALECT || "mysql",
-        logging: false, // Set to console.log to see SQL queries
+        logging: process.env.NODE_ENV === 'production' ? false : console.log,
         pool: {
-            max: 5,
-            min: 0,
-            acquire: 30000,
+            max: 10,
+            min: 2,
+            acquire: 60000,
             idle: 10000
+        },
+        dialectOptions: process.env.NODE_ENV === 'production' ? {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false
+            }
+        } : {},
+        retry: {
+            max: 3
         }
     }
 );

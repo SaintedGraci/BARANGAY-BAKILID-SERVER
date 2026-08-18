@@ -5,6 +5,37 @@ import { paginateQuery } from "../utils/pagination.js";
 import APIResponse from "../utils/apiResponse.js";
 import { convertObjectUrls } from "../utils/imageProxy.js";
 
+// Get current resident's own profile
+export const getMyProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        // Get user with resident information
+        const user = await User.findByPk(userId, {
+            attributes: ['id', 'username', 'email', 'role', 'isVerified', 'fullName', 'contactNumber', 'status', 'createdAt', 'updatedAt']
+        });
+        
+        if (!user) {
+            return APIResponse.notFound(res, "User not found");
+        }
+        
+        // Get resident profile if exists
+        const resident = await Resident.findOne({
+            where: { UserId: userId }
+        });
+        
+        const profileData = {
+            user: user.get({ plain: true }),
+            resident: resident ? convertObjectUrls(resident.get({ plain: true })) : null
+        };
+        
+        return APIResponse.success(res, profileData, "Profile retrieved successfully");
+    } catch (error) {
+        console.error("Get my profile error:", error);
+        return APIResponse.serverError(res, "Failed to retrieve profile", error);
+    }
+};
+
 export const getAllResidents = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;

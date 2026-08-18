@@ -8,7 +8,8 @@ import {
     deleteResident,
     getPendingVerifications,
     approveResident,
-    rejectResident
+    rejectResident,
+    getMyProfile
 } from "../controllers/residentController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -17,6 +18,34 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(authMiddleware);
+
+/**
+ * @swagger
+ * /api/residents/my-profile:
+ *   get:
+ *     summary: Get current resident's own profile
+ *     tags: [Residents]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                     resident:
+ *                       type: object
+ */
+router.get("/my-profile", getMyProfile);
 
 /**
  * @swagger

@@ -15,6 +15,15 @@ import swaggerSpec from './config/swagger.js';
 // Load environment variables
 dotenv.config();
 
+// Validate critical environment variables
+const requiredEnvVars = ['DB_NAME', 'DB_USER', 'DB_PASSWORD', 'JWT_SECRET', 'CLIENT_URL'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    process.exit(1);
+}
+
 // Import all models to register them with Sequelize
 import User from "./models/user.js";
 import Resident from "./models/resident.js";
@@ -176,3 +185,30 @@ sequelize.authenticate()
         logger.error("❌ Database connection error:", error);
         process.exit(1);
     });
+
+// Graceful shutdown
+const gracefulShutdown = async (signal) => {
+    logger.info(`\n${signal} received. Starting graceful shutdown...`);
+    
+    httpServer.close(async () => {
+        logger.info('HTTP server closed');
+        
+        try {
+            await sequelize.close();
+            logger.info('Database connection closed');
+            process.exit(0);
+        } catch (err) {
+            logger.error('Error during shutdown:', err);
+            process.exit(1);
+        }
+    });
+    
+    // Force shutdown after 30 seconds
+    setTimeout(() => {
+        logger.error('Forced shutdown after timeout');
+        process.exit(1);
+    }, 30000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
