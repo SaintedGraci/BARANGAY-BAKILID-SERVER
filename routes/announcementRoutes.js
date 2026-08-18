@@ -7,7 +7,12 @@ import {
     updateAnnouncement, 
     deleteAnnouncement,
     togglePinAnnouncement,
-    archiveAnnouncement 
+    archiveAnnouncement,
+    toggleReaction,
+    getReactions,
+    addComment,
+    getComments,
+    deleteComment
 } from "../controllers/announcementController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -195,5 +200,118 @@ router.patch("/:id/pin", roleMiddleware(["admin", "captain", "secretary"]), togg
  *         description: Captain, Secretary, or Admin only
  */
 router.patch("/:id/archive", roleMiddleware(["admin", "captain", "secretary"]), archiveAnnouncement);
+
+// Reactions and comments routes
+/**
+ * @swagger
+ * /api/announcements/{id}/react:
+ *   post:
+ *     summary: Toggle reaction on announcement
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Reaction toggled
+ */
+router.post("/:id/react", toggleReaction);
+
+/**
+ * @swagger
+ * /api/announcements/{id}/reactions:
+ *   get:
+ *     summary: Get reactions for announcement
+ *     tags: [Announcements]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Reactions retrieved
+ */
+router.get("/:id/reactions", getReactions);
+
+/**
+ * @swagger
+ * /api/announcements/{id}/comments:
+ *   post:
+ *     summary: Add comment to announcement
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - comment
+ *             properties:
+ *               comment:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Comment added
+ */
+router.post("/:id/comments", addComment);
+
+/**
+ * @swagger
+ * /api/announcements/{id}/comments:
+ *   get:
+ *     summary: Get comments for announcement
+ *     tags: [Announcements]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Comments retrieved
+ */
+router.get("/:id/comments", getComments);
+
+/**
+ * @swagger
+ * /api/announcements/{id}/comments/{commentId}:
+ *   delete:
+ *     summary: Delete comment
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Comment deleted
+ */
+router.delete("/:id/comments/:commentId", deleteComment);
 
 export default router;

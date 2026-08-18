@@ -271,3 +271,230 @@ export const archiveAnnouncement = async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 };
+
+// Toggle reaction (helpful/like)
+export const toggleReaction = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const { AnnouncementReaction } = await import('../models/announcementReaction.js');
+
+        // Check if announcement exists
+        const announcement = await Announcement.findByPk(id);
+        if (!announcement) {
+            return res.status(404).json({
+                success: false,
+                message: "Announcement not found"
+            });
+        }
+
+        // Check if user already reacted
+        const existingReaction = await AnnouncementReaction.default.findOne({
+            where: {
+                announcementId: id,
+                userId
+            }
+        });
+
+        if (existingReaction) {
+            // Remove reaction
+            await existingReaction.destroy();
+            return res.json({
+                success: true,
+                message: "Reaction removed",
+                data: { reacted: false }
+            });
+        } else {
+            // Add reaction
+            await AnnouncementReaction.default.create({
+                announcementId: id,
+                userId,
+                type: 'helpful'
+            });
+            return res.json({
+                success: true,
+                message: "Reaction added",
+                data: { reacted: true }
+            });
+        }
+    } catch (error) {
+        console.error("Toggle reaction error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to toggle reaction",
+            error: error.message
+        });
+    }
+};
+
+// Get reactions for an announcement
+export const getReactions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { AnnouncementReaction } = await import('../models/announcementReaction.js');
+
+        const reactions = await AnnouncementReaction.default.findAll({
+            where: { announcementId: id },
+            include: [{
+                model: (await import('../models/user.js')).default,
+                as: 'user',
+                attributes: ['id', 'username', 'fullName']
+            }]
+        });
+
+        const userReacted = req.user ? reactions.some(r => r.userId === req.user.id) : false;
+
+        return res.json({
+            success: true,
+            data: {
+                count: reactions.length,
+                userReacted,
+                reactions
+            }
+        });
+    } catch (error) {
+        console.error("Get reactions error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to get reactions",
+            error: error.message
+        });
+    }
+};
+
+// Add comment
+export const addComment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const { comment } = req.body;
+
+        if (!comment || comment.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Comment text is required"
+            });
+        }
+
+        // Check if announcement exists
+        const announcement = await Announcement.findByPk(id);
+        if (!announcement) {
+            return res.status(404).json({
+                success: false,
+                message: "Announcement not found"
+            });
+        }
+
+        const { AnnouncementComment } = await import('../models/announcementComment.js');
+        const User = (await import('../models/user.js')).default;
+
+        const newComment = await AnnouncementComment.default.create({
+            announcementId: id,
+            userId,
+            comment: comment.trim()
+        });
+
+        // Fetch comment with user details
+        const commentWithUser = await AnnouncementComment.default.findByPk(newComment.id, {
+            include: [{
+                model: User,
+                as: 'user',
+                attributes: ['id', 'username', 'fullName']
+            }]
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Comment added successfully",
+            data: commentWithUser
+        });
+    } catch (error) {
+        console.error("Add comment error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to add comment",
+            error: error.message
+        });
+    }
+};
+
+// Get comments for an announcement
+export const getComments = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { AnnouncementComment } = await import('../models/announcementComment.js');
+        const User = (await import('../models/user.js')).default;
+
+        const comments = await AnnouncementComment.default.findAll({
+            where: { announcementId: id },
+            include: [{
+                model: User,
+                as: 'user',
+                attributes: ['id', 'username', 'fullName']
+            }],
+            order: [['createdAt', 'DESC']]
+        });
+
+        return res.json({
+            success: true,
+            data: {
+                count: comments.length,
+                comments
+            }
+        });
+    } catch (error) {
+        console.error("Get comments error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to get comments",
+            error: error.message
+        });
+    }
+};
+
+// Delete comment (user can delete their own, admin can delete any)
+export const deleteComment = async (req, res) => {
+    try {
+        const { id, commentId } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const { AnnouncementComment } = await import('../models/announcementComment.js');
+
+        const comment = await AnnouncementComment.default.findOne({
+            where: {
+                id: commentId,
+                announcementId: id
+            }
+        });
+
+        if (!comment) {
+            return res.status(404).json({
+                success: false,
+                message: "Comment not found"
+            });
+        }
+
+        // Check permission: owner or admin
+        if (comment.userId !== userId && !['admin', 'captain', 'secretary'].includes(userRole)) {
+            return res.status(403).json({
+                success: false,
+                message: "You don't have permission to delete this comment"
+            });
+        }
+
+        await comment.destroy();
+
+        return res.json({
+            success: true,
+            message: "Comment deleted successfully"
+        });
+    } catch (error) {
+        console.error("Delete comment error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to delete comment",
+            error: error.message
+        });
+    }
+};
