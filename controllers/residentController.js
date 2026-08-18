@@ -360,3 +360,113 @@ export const rejectResident = async (req, res) => {
         });
     }
 };
+
+// Update resident profile (self)
+export const updateMyProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { firstName, lastName, middleName, email } = req.body;
+
+        // Find the user's resident record
+        const resident = await Resident.findOne({ where: { UserId: userId } });
+        
+        if (!resident) {
+            return APIResponse.notFound(res, "Resident profile not found");
+        }
+
+        // Update resident name fields if provided
+        const residentUpdates = {};
+        if (firstName) residentUpdates.firstName = firstName;
+        if (lastName) residentUpdates.lastName = lastName;
+        if (middleName !== undefined) residentUpdates.middleName = middleName;
+
+        if (Object.keys(residentUpdates).length > 0) {
+            await resident.update(residentUpdates);
+        }
+
+        // Update user email if provided and different from current
+        if (email && email !== req.user.email) {
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return APIResponse.badRequest(res, "Invalid email format");
+            }
+
+            // Check if email already exists
+            const existingUser = await User.findOne({ 
+                where: { 
+                    email,
+                    id: { $ne: userId }
+                } 
+            });
+
+            if (existingUser) {
+                return APIResponse.badRequest(res, "Email address is already in use");
+            }
+
+            // Update email
+            await User.update(
+                { email },
+                { where: { id: userId } }
+            );
+        }
+
+        // Fetch updated data
+        const updatedUser = await User.findByPk(userId, {
+            attributes: ['id', 'username', 'email', 'role', 'isVerified', 'fullName', 'contactNumber', 'status', 'createdAt', 'updatedAt']
+        });
+
+        const updatedResident = await Resident.findOne({ where: { UserId: userId } });
+
+        const profileData = {
+            user: updatedUser.get({ plain: true }),
+            resident: updatedResident ? convertObjectUrls(updatedResident.get({ plain: true })) : null
+        };
+
+        return APIResponse.success(res, profileData, "Profile updated successfully");
+    } catch (error) {
+        console.error("Update profile error:", error);
+        return APIResponse.serverError(res, "Failed to update profile", error);
+    }
+};
+
+// Change password (self)
+export const changePassword = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return APIResponse.badRequest(res, "Current password and new password are required");
+        }
+
+        if (newPassword.length < 6) {
+            return APIResponse.badRequest(res, "New password must be at least 6 characters long");
+        }
+
+        // Get user with password
+        const user = await User.findByPk(userId);
+        
+        if (!user) {
+            return APIResponse.notFound(res, "User not found");
+        }
+
+        // Verify current password
+        const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        
+        if (!isPasswordValid) {
+            return APIResponse.unauthorized(res, "Current password is incorrect");
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password
+        await user.update({ password: hashedPassword });
+
+        return APIResponse.success(res, null, "Password changed successfully");
+    } catch (error) {
+        console.error("Change password error:", error);
+        return APIResponse.serverError(res, "Failed to change password", error);
+    }
+};

@@ -9,7 +9,9 @@ import {
     getPendingVerifications,
     approveResident,
     rejectResident,
-    getMyProfile
+    getMyProfile,
+    updateMyProfile,
+    changePassword
 } from "../controllers/residentController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -46,6 +48,68 @@ router.use(authMiddleware);
  *                       type: object
  */
 router.get("/my-profile", getMyProfile);
+
+/**
+ * @swagger
+ * /api/residents/my-profile:
+ *   put:
+ *     summary: Update current resident's own profile
+ *     tags: [Residents]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               middleName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ */
+router.put("/my-profile", updateMyProfile);
+
+/**
+ * @swagger
+ * /api/residents/change-password:
+ *   put:
+ *     summary: Change password for current resident
+ *     tags: [Residents]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 format: password
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 6
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       401:
+ *         description: Current password is incorrect
+ */
+router.put("/change-password", changePassword);
 
 /**
  * @swagger
