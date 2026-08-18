@@ -277,7 +277,7 @@ export const toggleReaction = async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.user.id;
-        const { AnnouncementReaction } = await import('../models/announcementReaction.js');
+        const AnnouncementReaction = (await import('../models/announcementReaction.js')).default;
 
         // Check if announcement exists
         const announcement = await Announcement.findByPk(id);
@@ -289,7 +289,7 @@ export const toggleReaction = async (req, res) => {
         }
 
         // Check if user already reacted
-        const existingReaction = await AnnouncementReaction.default.findOne({
+        const existingReaction = await AnnouncementReaction.findOne({
             where: {
                 announcementId: id,
                 userId
@@ -306,7 +306,7 @@ export const toggleReaction = async (req, res) => {
             });
         } else {
             // Add reaction
-            await AnnouncementReaction.default.create({
+            await AnnouncementReaction.create({
                 announcementId: id,
                 userId,
                 type: 'helpful'
@@ -331,12 +331,13 @@ export const toggleReaction = async (req, res) => {
 export const getReactions = async (req, res) => {
     try {
         const { id } = req.params;
-        const { AnnouncementReaction } = await import('../models/announcementReaction.js');
+        const AnnouncementReaction = (await import('../models/announcementReaction.js')).default;
+        const User = (await import('../models/user.js')).default;
 
-        const reactions = await AnnouncementReaction.default.findAll({
+        const reactions = await AnnouncementReaction.findAll({
             where: { announcementId: id },
             include: [{
-                model: (await import('../models/user.js')).default,
+                model: User,
                 as: 'user',
                 attributes: ['id', 'username', 'fullName']
             }]
@@ -385,17 +386,17 @@ export const addComment = async (req, res) => {
             });
         }
 
-        const { AnnouncementComment } = await import('../models/announcementComment.js');
+        const AnnouncementComment = (await import('../models/announcementComment.js')).default;
         const User = (await import('../models/user.js')).default;
 
-        const newComment = await AnnouncementComment.default.create({
+        const newComment = await AnnouncementComment.create({
             announcementId: id,
             userId,
             comment: comment.trim()
         });
 
         // Fetch comment with user details
-        const commentWithUser = await AnnouncementComment.default.findByPk(newComment.id, {
+        const commentWithUser = await AnnouncementComment.findByPk(newComment.id, {
             include: [{
                 model: User,
                 as: 'user',
@@ -422,10 +423,10 @@ export const addComment = async (req, res) => {
 export const getComments = async (req, res) => {
     try {
         const { id } = req.params;
-        const { AnnouncementComment } = await import('../models/announcementComment.js');
+        const AnnouncementComment = (await import('../models/announcementComment.js')).default;
         const User = (await import('../models/user.js')).default;
 
-        const comments = await AnnouncementComment.default.findAll({
+        const comments = await AnnouncementComment.findAll({
             where: { announcementId: id },
             include: [{
                 model: User,
@@ -459,9 +460,9 @@ export const deleteComment = async (req, res) => {
         const userId = req.user.id;
         const userRole = req.user.role;
 
-        const { AnnouncementComment } = await import('../models/announcementComment.js');
+        const AnnouncementComment = (await import('../models/announcementComment.js')).default;
 
-        const comment = await AnnouncementComment.default.findOne({
+        const comment = await AnnouncementComment.findOne({
             where: {
                 id: commentId,
                 announcementId: id
