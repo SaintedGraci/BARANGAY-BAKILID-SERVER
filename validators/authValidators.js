@@ -101,7 +101,11 @@ export const loginValidation = [
         .notEmpty().withMessage('Username is required'),
     
     body('password')
-        .notEmpty().withMessage('Password is required')
+        .notEmpty().withMessage('Password is required'),
+    
+    body('turnstileToken')
+        .notEmpty().withMessage('Verification token is required')
+        .isString().withMessage('Invalid verification token')
 ];
 
 /**
