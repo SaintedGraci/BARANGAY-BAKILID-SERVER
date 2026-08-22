@@ -66,4 +66,12 @@ const Announcement = sequelize.define("Announcement", {
 
 });
 
+// Define association (will be used by announcementReaction model)
+Announcement.associate = (models) => {
+    Announcement.hasMany(models.AnnouncementReaction, {
+        foreignKey: 'announcementId',
+        as: 'reactions'
+    });
+};
+
 export default Announcement;

@@ -6,14 +6,43 @@ import logger from "../config/logger.js";
 
 export const getAllAnnouncements = async (req, res) => {
     try {
+        const userId = req.user?.id; // May be null for unauthenticated users
+        const AnnouncementReaction = (await import('../models/announcementReaction.js')).default;
+
+        // Manually set up association if not already defined
+        if (!Announcement.associations.reactions) {
+            Announcement.hasMany(AnnouncementReaction, {
+                foreignKey: 'announcementId',
+                as: 'reactions'
+            });
+        }
+
         const announcements = await Announcement.findAll({
+            include: [{
+                model: AnnouncementReaction,
+                as: 'reactions',
+                required: false,
+                attributes: ['id', 'userId', 'createdAt']
+            }],
             order: [["createdAt", "DESC"]],
         });
 
-        // Convert R2 URLs to proxy URLs to bypass DNS issues
+        // Convert R2 URLs and add reaction state
         const convertedAnnouncements = announcements.map(ann => {
             const plain = ann.get({ plain: true });
-            return convertObjectUrls(plain);
+            const converted = convertObjectUrls(plain);
+            
+            // Calculate reaction state
+            const reactions = plain.reactions || [];
+            const helpfulCount = reactions.length;
+            const isHelpful = userId ? reactions.some(r => r.userId === userId) : false;
+            
+            // Remove reactions array from response, add computed fields
+            delete converted.reactions;
+            converted.helpfulCount = helpfulCount;
+            converted.isHelpful = isHelpful;
+            
+            return converted;
         });
 
         return res.status(200).json({
@@ -275,12 +304,12 @@ export const archiveAnnouncement = async (req, res) => {
 // Toggle reaction (helpful/like)
 export const toggleReaction = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id: announcementId } = req.params;
         const userId = req.user.id;
         const AnnouncementReaction = (await import('../models/announcementReaction.js')).default;
 
         // Check if announcement exists
-        const announcement = await Announcement.findByPk(id);
+        const announcement = await Announcement.findByPk(announcementId);
         if (!announcement) {
             return res.status(404).json({
                 success: false,
@@ -288,37 +317,66 @@ export const toggleReaction = async (req, res) => {
             });
         }
 
-        // Check if user already reacted
+        // Find existing reaction
         const existingReaction = await AnnouncementReaction.findOne({
             where: {
-                announcementId: id,
+                announcementId,
                 userId
             }
         });
 
+        let action;
         if (existingReaction) {
-            // Remove reaction
+            // Remove reaction (unlike)
             await existingReaction.destroy();
-            return res.json({
-                success: true,
-                message: "Reaction removed",
-                data: { reacted: false }
-            });
+            action = 'removed';
         } else {
-            // Add reaction
+            // Add reaction (like)
             await AnnouncementReaction.create({
-                announcementId: id,
+                announcementId: parseInt(announcementId),
                 userId,
                 type: 'helpful'
             });
+            action = 'added';
+        }
+
+        // Get updated count
+        const helpfulCount = await AnnouncementReaction.count({
+            where: { announcementId }
+        });
+
+        return res.json({
+            success: true,
+            message: action === 'added' ? 'Reaction added' : 'Reaction removed',
+            data: {
+                announcementId: parseInt(announcementId),
+                helpfulCount,
+                isHelpful: action === 'added',
+                action
+            }
+        });
+    } catch (error) {
+        logger.error("Toggle reaction error:", error);
+        
+        // Handle unique constraint violation gracefully
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            const AnnouncementReaction = (await import('../models/announcementReaction.js')).default;
+            const helpfulCount = await AnnouncementReaction.count({
+                where: { announcementId: req.params.id }
+            });
+            
             return res.json({
                 success: true,
-                message: "Reaction added",
-                data: { reacted: true }
+                message: 'Reaction already exists',
+                data: {
+                    announcementId: parseInt(req.params.id),
+                    helpfulCount,
+                    isHelpful: true,
+                    action: 'already_exists'
+                }
             });
         }
-    } catch (error) {
-        console.error("Toggle reaction error:", error);
+        
         return res.status(500).json({
             success: false,
             message: "Failed to toggle reaction",

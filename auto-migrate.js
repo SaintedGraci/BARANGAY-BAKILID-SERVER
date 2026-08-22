@@ -228,17 +228,20 @@ export async function autoMigrate() {
       if (!currentEnum.includes('Important') || !currentEnum.includes('Advisories')) {
         logger.info('⚙️ Running automatic migration: Updating category enum to match UI...');
         
+        // IMPORTANT: Map old values FIRST before MODIFY COLUMN drops them from the enum.
+        // MySQL sets rows with removed enum values to '' (empty string) during MODIFY,
+        // so the UPDATEs must run while the old values are still valid.
+        await sequelize.query(`UPDATE Announcements SET category = 'Events' WHERE category = 'Event'`);
+        await sequelize.query(`UPDATE Announcements SET category = 'Advisories' WHERE category = 'Advisory'`);
+        await sequelize.query(`UPDATE Announcements SET category = 'General' WHERE category = 'Community'`);
+
+        // Now safe to modify the enum — no rows hold the old values anymore
         await sequelize.query(`
           ALTER TABLE Announcements 
           MODIFY COLUMN category 
           ENUM('General', 'Emergency', 'Important', 'Events', 'Advisories') 
           DEFAULT 'General';
         `);
-        
-        // Map old values to new ones
-        await sequelize.query(`UPDATE Announcements SET category = 'Events' WHERE category = 'Event'`);
-        await sequelize.query(`UPDATE Announcements SET category = 'Advisories' WHERE category = 'Advisory'`);
-        await sequelize.query(`UPDATE Announcements SET category = 'General' WHERE category = 'Community'`);
         
         logger.info('✅ Migration completed: Category enum updated to match UI tabs');
         logger.info('   Categories: General, Emergency, Important, Events, Advisories');
@@ -247,8 +250,109 @@ export async function autoMigrate() {
       }
     }
 
+    // Check if AnnouncementReactions table exists (DEBUG1 - Helpful Reaction Fix)
+    const [reactionsTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'AnnouncementReactions';
+    `);
+
+    if (reactionsTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating AnnouncementReactions table (DEBUG1)...');
+      
+      await sequelize.query(`
+        CREATE TABLE AnnouncementReactions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          announcementId INT NOT NULL,
+          userId INT NOT NULL,
+          type ENUM('helpful', 'like') DEFAULT 'helpful',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_reaction (announcementId, userId),
+          FOREIGN KEY (announcementId) REFERENCES Announcements(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES Users(id) ON DELETE CASCADE,
+          INDEX idx_announcement (announcementId),
+          INDEX idx_user (userId)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Stores user reactions (helpful/like) on announcements';
+      `);
+      
+      logger.info('✅ Migration completed: AnnouncementReactions table created');
+      logger.info('👍 DEBUG1: Helpful reaction feature with green button is now active');
+    } else {
+      logger.info('✓ AnnouncementReactions table already exists');
+      
+      // Check if unique constraint exists on existing table
+      const [uniqueConstraintCheck] = await sequelize.query(`
+        SELECT CONSTRAINT_NAME 
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'AnnouncementReactions'
+          AND CONSTRAINT_TYPE = 'UNIQUE';
+      `);
+      
+      if (uniqueConstraintCheck.length === 0) {
+        logger.info('⚙️ Adding unique constraint to existing AnnouncementReactions table (DEBUG1)...');
+        
+        // Remove any duplicate reactions first
+        await sequelize.query(`
+          DELETE t1 FROM AnnouncementReactions t1
+          INNER JOIN AnnouncementReactions t2 
+          WHERE t1.id > t2.id 
+            AND t1.announcementId = t2.announcementId 
+            AND t1.userId = t2.userId;
+        `);
+        
+        // Add unique constraint
+        await sequelize.query(`
+          ALTER TABLE AnnouncementReactions 
+          ADD UNIQUE KEY unique_reaction (announcementId, userId);
+        `);
+        
+        logger.info('✅ Unique constraint added to AnnouncementReactions (DEBUG1)');
+        logger.info('🔒 Duplicate reactions are now prevented at database level');
+      } else {
+        logger.info('✓ Unique constraint already exists on AnnouncementReactions');
+      }
+    }
+
+    // Check if AnnouncementComments table exists
+    const [commentsTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'AnnouncementComments';
+    `);
+
+    if (commentsTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating AnnouncementComments table...');
+      
+      await sequelize.query(`
+        CREATE TABLE AnnouncementComments (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          announcementId INT NOT NULL,
+          userId INT NOT NULL,
+          comment TEXT NOT NULL,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (announcementId) REFERENCES Announcements(id) ON DELETE CASCADE,
+          FOREIGN KEY (userId) REFERENCES Users(id) ON DELETE CASCADE,
+          INDEX idx_announcement_created (announcementId, createdAt),
+          INDEX idx_user (userId)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Stores user comments on announcements';
+      `);
+      
+      logger.info('✅ Migration completed: AnnouncementComments table created');
+      logger.info('💬 Announcement reactions and comments feature is now active');
+    } else {
+      logger.info('✓ AnnouncementComments table already exists');
+    }
+
   } catch (error) {
     logger.error('❌ Auto-migration error:', error.message);
+    logger.error('Stack trace:', error.stack);
     // Don't crash the server, just log the error
   }
 }
