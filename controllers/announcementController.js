@@ -58,21 +58,46 @@ export const getAllAnnouncements = async (req, res) => {
 export const getAnnouncementById = async (req, res) => {
     try {
         const { id } = req.params;
-        const announcement = await Announcement.findByPk(id);
+        const userId = req.user?.id;
+        const AnnouncementReaction = (await import('../models/announcementReaction.js')).default;
+
+        if (!Announcement.associations.reactions) {
+            Announcement.hasMany(AnnouncementReaction, {
+                foreignKey: 'announcementId',
+                as: 'reactions'
+            });
+        }
+
+        const announcement = await Announcement.findByPk(id, {
+            include: [{
+                model: AnnouncementReaction,
+                as: 'reactions',
+                required: false,
+                attributes: ['id', 'userId', 'createdAt']
+            }]
+        });
 
         if (!announcement) {
             return res.status(404).json({ message: "Announcement not found" });
         }
 
+        const plain = announcement.get({ plain: true });
+        const converted = convertObjectUrls(plain);
+        const reactions = plain.reactions || [];
+        converted.helpfulCount = reactions.length;
+        converted.isHelpful = userId ? reactions.some(r => r.userId === userId) : false;
+        delete converted.reactions;
+
         return res.status(200).json({
             success: true,
-            data: announcement,
+            data: converted,
         });
     } catch (error) {
         console.error("Get announcement error:", error);
         return res.status(500).json({ message: "Server error" });
     }
 };
+
 
 export const createAnnouncement = async (req, res) => {
     try {

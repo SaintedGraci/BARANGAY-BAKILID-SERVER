@@ -14,9 +14,9 @@ import {
     getComments,
     deleteComment
 } from "../controllers/announcementController.js";
-import { authMiddleware } from "../middleware/authMiddleware.js";
+import { authMiddleware, optionalAuth } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
-import { cacheShort } from "../middleware/cacheMiddleware.js";
+import { noCache, cacheShort } from "../middleware/cacheMiddleware.js";
 
 // Multer configuration for memory storage (no disk writes)
 const upload = multer({
@@ -47,7 +47,7 @@ const router = express.Router();
  *       200:
  *         description: Announcements retrieved successfully
  */
-router.get("/", cacheShort, getAllAnnouncements);
+router.get("/", noCache, optionalAuth, getAllAnnouncements);
 
 /**
  * @swagger
@@ -233,7 +233,7 @@ router.get("/:id/comments", getComments);
  *       404:
  *         description: Announcement not found
  */
-router.get("/:id", cacheShort, getAnnouncementById);
+router.get("/:id", noCache, optionalAuth, getAnnouncementById);
 
 // Protected routes - require authentication
 router.use(authMiddleware);

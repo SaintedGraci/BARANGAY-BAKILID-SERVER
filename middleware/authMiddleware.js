@@ -60,3 +60,30 @@ export const authMiddleware = async (req, res, next) => {
         });
     }
 };
+
+export const optionalAuth = async (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            if (token) {
+                const revoked = await RevokedToken.findOne({ where: { token } });
+                if (!revoked) {
+                    try {
+                        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                        const user = await User.findByPk(decoded.id);
+                        if (user) {
+                            req.user = user;
+                        }
+                    } catch (jwtErr) {
+                        // Token invalid/expired - continue as guest
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Optional auth error:", error);
+    }
+    next();
+};
+
