@@ -649,8 +649,8 @@ export async function autoMigrate() {
         for (const [role, permissions] of Object.entries(rolePermissions)) {
           for (const permKey of permissions) {
             await sequelize.query(`
-              INSERT INTO role_permissions (role, permissionKey, granted)
-              VALUES (?, ?, TRUE)
+              INSERT INTO role_permissions (role, permissionKey, granted, createdAt, updatedAt)
+              VALUES (?, ?, TRUE, NOW(), NOW())
             `, {
               replacements: [role, permKey]
             });
@@ -833,8 +833,8 @@ export async function autoMigrate() {
         
         for (const setting of defaultSettings) {
           await sequelize.query(`
-            INSERT INTO system_settings (\`key\`, value, type, label, category, description)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO system_settings (\`key\`, value, type, label, category, description, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
           `, {
             replacements: [setting.key, setting.value, setting.type, setting.label, setting.category, setting.description]
           });
@@ -920,8 +920,8 @@ export async function autoMigrate() {
         
         for (const feature of defaultFeatures) {
           await sequelize.query(`
-            INSERT INTO feature_flags (\`key\`, label, description, isEnabled)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO feature_flags (\`key\`, label, description, isEnabled, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, NOW(), NOW())
           `, {
             replacements: [feature.key, feature.label, feature.description, feature.isEnabled]
           });
