@@ -460,7 +460,8 @@ export async function autoMigrate() {
       if (permCount[0].count === 0) {
         logger.info('📝 Permissions table exists but is empty. Seeding default permissions...');
         
-        const defaultPermissions = [
+        try {
+          const defaultPermissions = [
           // Dashboard
           { key: 'dashboard.view', label: 'View Dashboard', module: 'Dashboard', description: 'Access to main dashboard' },
           { key: 'dashboard.analytics', label: 'View Analytics', module: 'Dashboard', description: 'View analytics and statistics' },
@@ -523,6 +524,12 @@ export async function autoMigrate() {
         }
 
         logger.info(`✅ Seeded ${defaultPermissions.length} default permissions`);
+        } catch (seedError) {
+          console.error('❌ Error seeding permissions:',  seedError);
+          logger.error('❌ Error seeding permissions:', seedError?.message || String(seedError));
+          logger.error('SQL Error:', seedError?.sql);
+          throw seedError; // Re-throw to trigger main error handler
+        }
       } else {
         logger.info(`✓ Permissions table has ${permCount[0].count} entries`);
       }
@@ -1098,9 +1105,25 @@ export async function autoMigrate() {
     }
 
   } catch (error) {
-    logger.error('❌ Auto-migration error:', error.message || error);
-    logger.error('Stack trace:', error.stack || 'No stack trace available');
-    logger.error('Full error object:', JSON.stringify(error, null, 2));
+    console.error('❌ Auto-migration error:');
+    console.error('Error message:', error?.message || 'No message');
+    console.error('Error name:', error?.name || 'No name');
+    console.error('Error code:', error?.code || 'No code');
+    console.error('Stack trace:', error?.stack || 'No stack trace');
+    
+    // Try to log the error in different ways
+    try {
+      logger.error('❌ Auto-migration error:', error?.message || String(error));
+      logger.error('Stack trace:', error?.stack || 'No stack trace available');
+      logger.error('Error details:', { 
+        name: error?.name, 
+        code: error?.code,
+        sqlMessage: error?.sqlMessage,
+        sql: error?.sql 
+      });
+    } catch (logError) {
+      console.error('Failed to log error:', logError);
+    }
     // Don't crash the server, just log the error
   }
 }
