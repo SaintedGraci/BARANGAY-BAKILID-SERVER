@@ -819,11 +819,11 @@ export async function autoMigrate() {
         logger.info('📝 System_settings table exists but is empty. Seeding default settings...');
         
         const defaultSettings = [
-          { key: 'system_name', value: 'Barangay Management System', type: 'text', label: 'System Name', category: 'general', description: 'Official name of the system' },
-          { key: 'barangay_name', value: 'Barangay Bakilid', type: 'text', label: 'Barangay Name', category: 'general', description: 'Official barangay name' },
-          { key: 'contact_email', value: 'barangay@example.com', type: 'email', label: 'Contact Email', category: 'contact', description: 'Primary contact email' },
-          { key: 'contact_phone', value: '+63 XXX XXX XXXX', type: 'tel', label: 'Contact Phone', category: 'contact', description: 'Primary contact phone number' },
-          { key: 'office_hours', value: 'Mon-Fri 8:00 AM - 5:00 PM', type: 'text', label: 'Office Hours', category: 'general', description: 'Barangay office operating hours' },
+          { key: 'system_name', value: 'Barangay Management System', type: 'string', label: 'System Name', category: 'general', description: 'Official name of the system' },
+          { key: 'barangay_name', value: 'Barangay Bakilid', type: 'string', label: 'Barangay Name', category: 'general', description: 'Official barangay name' },
+          { key: 'contact_email', value: 'barangay@example.com', type: 'string', label: 'Contact Email', category: 'contact', description: 'Primary contact email' },
+          { key: 'contact_phone', value: '+63 XXX XXX XXXX', type: 'string', label: 'Contact Phone', category: 'contact', description: 'Primary contact phone number' },
+          { key: 'office_hours', value: 'Mon-Fri 8:00 AM - 5:00 PM', type: 'string', label: 'Office Hours', category: 'general', description: 'Barangay office operating hours' },
           { key: 'maintenance_mode', value: 'false', type: 'boolean', label: 'Maintenance Mode', category: 'system', description: 'Enable to put system under maintenance' },
           { key: 'allow_registrations', value: 'true', type: 'boolean', label: 'Allow Registrations', category: 'system', description: 'Allow new resident registrations' },
           { key: 'require_email_verification', value: 'false', type: 'boolean', label: 'Require Email Verification', category: 'security', description: 'Require email verification for new accounts' },
