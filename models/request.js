@@ -10,20 +10,24 @@ const Request = sequelize.define("Request", {
         primaryKey: true,
     },
 
-    documentType: {
-        type: DataTypes.ENUM(
-            "Barangay Clearance",
-            "Certificate of Residency",
-            "Indigency Certificate",
-            "Business Permit",
-            "Certificate of Good Moral",
-            "Community Tax Certificate (Cedula)"
-        ),
+    // Foreign key to DocumentServices table
+    DocumentServiceId: {
+        type: DataTypes.INTEGER,
         allowNull: false,
+        references: {
+            model: 'DocumentServices',
+            key: 'id',
+        },
+    },
+
+    // Legacy field - kept for backward compatibility (can be removed after migration)
+    documentType: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
     },
 
     purpose: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
     },
 
@@ -44,6 +48,31 @@ const Request = sequelize.define("Request", {
 
     releaseDate: {
         type: DataTypes.DATE,
+    },
+
+    // Additional fields for better tracking
+    requestedDate: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+    },
+
+    processedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'Users',
+            key: 'id',
+        },
+    },
+
+    processingFee: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00,
+    },
+
+    paymentStatus: {
+        type: DataTypes.ENUM('Unpaid', 'Paid', 'Waived'),
+        defaultValue: 'Unpaid',
     },
 
 });

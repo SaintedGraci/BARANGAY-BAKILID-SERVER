@@ -135,6 +135,7 @@ router.put("/:id", roleMiddleware(["staff", "secretary", "admin", "captain"]), u
  *     tags: [Requests]
  *     security:
  *       - bearerAuth: []
+ *     description: Residents can delete their own "Pending" requests. Admins can delete any request.
  *     parameters:
  *       - in: path
  *         name: id
@@ -143,10 +144,14 @@ router.put("/:id", roleMiddleware(["staff", "secretary", "admin", "captain"]), u
  *           type: integer
  *     responses:
  *       200:
- *         description: Request deleted
+ *         description: Request deleted successfully
+ *       400:
+ *         description: Cannot delete non-pending requests
  *       403:
- *         description: Admin role required
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Request not found
  */
-router.delete("/:id", roleMiddleware(["admin"]), deleteRequest);
+router.delete("/:id", deleteRequest); // Removed role restriction - validation is done in controller
 
 export default router;

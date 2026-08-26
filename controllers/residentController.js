@@ -470,3 +470,30 @@ export const changePassword = async (req, res) => {
         return APIResponse.serverError(res, "Failed to change password", error);
     }
 };
+
+
+// ============ DOCUMENT SERVICES FOR RESIDENTS ============
+
+/**
+ * Get all active document services (public for residents)
+ * Any authenticated user can view available services
+ */
+export const getActiveDocumentServices = async (req, res) => {
+  try {
+    const DocumentService = (await import('../models/documentService.js')).default;
+    
+    const services = await DocumentService.findAll({
+      where: { isAvailable: true, allowOnlineRequest: true },
+      attributes: ['id', 'name', 'description', 'category', 'processingFee', 'isFree', 'processingDays'],
+      order: [['category', 'ASC'], ['name', 'ASC']],
+    });
+    
+    res.json({
+      success: true,
+      data: { services },
+    });
+  } catch (error) {
+    console.error('Error fetching active document services:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

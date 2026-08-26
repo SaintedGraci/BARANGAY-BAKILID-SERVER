@@ -45,6 +45,9 @@ import initDbRouter from "./init-db-api.js";
 // Import error middleware
 import { errorMiddleware } from "./middleware/errorMiddlware.js";
 
+// Import real-time sync service
+import realTimeSyncService from "./services/realTimeSyncService.js";
+
 const app = express();
 
 // Trust proxy - needed for Railway deployment (behind reverse proxy)
@@ -163,6 +166,9 @@ io.on('connection', (socket) => {
     logger.info(`🔌 Client disconnected: ${socket.id}`);
   });
 });
+
+// Initialize real-time sync service with Socket.IO
+realTimeSyncService.init(io);
 
 // Database connection and sync
 sequelize.authenticate()

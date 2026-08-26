@@ -61,13 +61,13 @@ export const getRequestById = async (req, res) => {
 
 export const createRequest = async (req, res) => {
     try {
-        const { documentType, purpose, remarks } = req.body;
+        const { documentServiceId, purpose, remarks } = req.body;
 
         // Validate input
-        if (!documentType || !purpose) {
+        if (!documentServiceId || !purpose) {
             return res.status(400).json({ 
                 success: false,
-                message: "Document type and purpose are required" 
+                message: "Document service and purpose are required" 
             });
         }
 
@@ -84,19 +84,58 @@ export const createRequest = async (req, res) => {
             });
         }
 
+        // Verify document service exists and is available
+        const DocumentService = (await import('../models/documentService.js')).default;
+        const service = await DocumentService.findByPk(documentServiceId);
+        
+        if (!service) {
+            return res.status(404).json({
+                success: false,
+                message: "Document service not found"
+            });
+        }
+
+        if (!service.isAvailable) {
+            return res.status(400).json({
+                success: false,
+                message: "This document service is currently not available"
+            });
+        }
+
+        if (!service.allowOnlineRequest) {
+            return res.status(400).json({
+                success: false,
+                message: "This document service does not allow online requests"
+            });
+        }
+
         // Create new request
         const newRequest = await Request.create({
-            documentType,
-            purpose,
-            remarks: remarks || null,
+            DocumentServiceId: documentServiceId,
+            documentType: service.name, // Keep for legacy compatibility
+            purpose: purpose.trim(),
+            remarks: remarks ? remarks.trim() : null,
             status: 'Pending',
-            ResidentId: resident.id
+            processingFee: service.isFree ? 0 : service.processingFee,
+            paymentStatus: service.isFree ? 'Waived' : 'Unpaid',
+            ResidentId: resident.id,
+            requestedDate: new Date(),
         });
 
         return res.status(201).json({ 
             success: true,
             message: "Request created successfully",
-            data: newRequest 
+            data: {
+                ...newRequest.toJSON(),
+                service: {
+                    id: service.id,
+                    name: service.name,
+                    category: service.category,
+                    processingDays: service.processingDays,
+                    processingFee: service.processingFee,
+                    isFree: service.isFree
+                }
+            }
         });
     } catch (error) {
         console.error("Create request error:", error);
@@ -196,16 +235,69 @@ export const updateRequest = async (req, res) => {
 };
 
 export const deleteRequest = async (req, res) => {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
 
-    // Find request by ID
-    const request = await Request.findByPk(id);
-    if (!request) {
-        return res.status(404).json({ message: "Request not found" });
+        // Find request with resident and user data
+        const request = await Request.findByPk(id, {
+            include: [{
+                model: Resident,
+                include: [{
+                    model: User,
+                    attributes: ['id']
+                }]
+            }]
+        });
+
+        if (!request) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Request not found" 
+            });
+        }
+
+        // Security check: Only the request owner or admin can delete
+        const isOwner = request.Resident?.User?.id === userId;
+        const isAdmin = ['admin', 'secretary', 'superadmin'].includes(userRole);
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ 
+                success: false,
+                message: "You don't have permission to delete this request" 
+            });
+        }
+
+        // Business rule: Residents can only delete "Pending" requests
+        if (isOwner && !isAdmin && request.status !== 'Pending') {
+            return res.status(400).json({ 
+                success: false,
+                message: `Cannot delete request with status "${request.status}". Only pending requests can be deleted.` 
+            });
+        }
+
+        // Store request details for response
+        const deletedRequestInfo = {
+            id: request.id,
+            documentType: request.documentType,
+            status: request.status
+        };
+
+        // Delete request
+        await request.destroy();
+
+        return res.status(200).json({ 
+            success: true,
+            message: "Request deleted successfully",
+            data: deletedRequestInfo
+        });
+    } catch (error) {
+        console.error("Delete request error:", error);
+        return res.status(500).json({ 
+            success: false,
+            message: "Failed to delete request",
+            error: error.message 
+        });
     }
-
-    // Delete request
-    await request.destroy();
-
-    return res.status(200).json({ message: "Request deleted successfully" });
 };

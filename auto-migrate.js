@@ -350,6 +350,565 @@ export async function autoMigrate() {
       logger.info('✓ AnnouncementComments table already exists');
     }
 
+    // ============ TASK 15: Superadmin System Control & Configuration ============
+
+    // Check if permissions table exists (TASK15)
+    const [permissionsTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'permissions';
+    `);
+
+    if (permissionsTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating permissions table (TASK15)...');
+      
+      await sequelize.query(`
+        CREATE TABLE permissions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          \`key\` VARCHAR(100) NOT NULL UNIQUE COMMENT 'Permission key e.g. complaints.view',
+          label VARCHAR(255) NOT NULL COMMENT 'Human-readable label',
+          module VARCHAR(100) NOT NULL COMMENT 'Module name: Dashboard, Residents, Requests, etc.',
+          description TEXT NULL COMMENT 'Description of what this permission grants',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_module (\`module\`),
+          INDEX idx_key (\`key\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Stores all available system permissions';
+      `);
+      
+      logger.info('✅ Migration completed: permissions table created');
+
+      // Seed default permissions
+      logger.info('📝 Seeding default permissions...');
+      
+      const defaultPermissions = [
+        // Dashboard
+        { key: 'dashboard.view', label: 'View Dashboard', module: 'Dashboard', description: 'Access to main dashboard' },
+        { key: 'dashboard.analytics', label: 'View Analytics', module: 'Dashboard', description: 'View analytics and statistics' },
+        { key: 'dashboard.reports', label: 'View Reports', module: 'Dashboard', description: 'Access reporting features' },
+        
+        // Residents
+        { key: 'residents.view', label: 'View Residents', module: 'Residents', description: 'View resident list and profiles' },
+        { key: 'residents.details', label: 'View Resident Details', module: 'Residents', description: 'View detailed resident information' },
+        { key: 'residents.verify', label: 'Verify Residents', module: 'Residents', description: 'Verify resident accounts' },
+        { key: 'residents.reject', label: 'Reject Residents', module: 'Residents', description: 'Reject resident verifications' },
+        { key: 'residents.suspend', label: 'Suspend Residents', module: 'Residents', description: 'Suspend resident accounts' },
+        { key: 'residents.delete', label: 'Delete Residents', module: 'Residents', description: 'Delete resident accounts' },
+        
+        // Requests
+        { key: 'requests.view', label: 'View Requests', module: 'Requests', description: 'View document requests' },
+        { key: 'requests.approve', label: 'Approve Requests', module: 'Requests', description: 'Approve document requests' },
+        { key: 'requests.reject', label: 'Reject Requests', module: 'Requests', description: 'Reject document requests' },
+        { key: 'requests.process', label: 'Process Requests', module: 'Requests', description: 'Process and update requests' },
+        { key: 'requests.complete', label: 'Mark as Completed', module: 'Requests', description: 'Mark requests as completed' },
+        { key: 'requests.download', label: 'Download Documents', module: 'Requests', description: 'Download request documents' },
+        { key: 'requests.generate', label: 'Generate Documents', module: 'Requests', description: 'Generate official documents' },
+        
+        // Complaints
+        { key: 'complaints.view', label: 'View Complaints', module: 'Complaints', description: 'View filed complaints' },
+        { key: 'complaints.assign', label: 'Assign Complaints', module: 'Complaints', description: 'Assign complaints to staff' },
+        { key: 'complaints.update', label: 'Update Complaint Status', module: 'Complaints', description: 'Update complaint status' },
+        { key: 'complaints.resolve', label: 'Resolve Complaints', module: 'Complaints', description: 'Mark complaints as resolved' },
+        
+        // Announcements
+        { key: 'announcements.view', label: 'View Announcements', module: 'Announcements', description: 'View all announcements' },
+        { key: 'announcements.create', label: 'Create Announcements', module: 'Announcements', description: 'Create new announcements' },
+        { key: 'announcements.edit', label: 'Edit Announcements', module: 'Announcements', description: 'Edit existing announcements' },
+        { key: 'announcements.delete', label: 'Delete Announcements', module: 'Announcements', description: 'Delete announcements' },
+        { key: 'announcements.publish', label: 'Publish Announcements', module: 'Announcements', description: 'Publish announcements' },
+        
+        // User Management
+        { key: 'users.view', label: 'View Users', module: 'User Management', description: 'View admin user accounts' },
+        { key: 'users.create', label: 'Create Users', module: 'User Management', description: 'Create new admin accounts' },
+        { key: 'users.edit', label: 'Edit Users', module: 'User Management', description: 'Edit admin user accounts' },
+        { key: 'users.deactivate', label: 'Deactivate Users', module: 'User Management', description: 'Deactivate admin accounts' },
+        { key: 'users.reset', label: 'Reset User Access', module: 'User Management', description: 'Reset passwords and access' },
+        
+        // Reports
+        { key: 'reports.view', label: 'View Reports', module: 'Reports', description: 'View system reports' },
+        { key: 'reports.generate', label: 'Generate Reports', module: 'Reports', description: 'Generate custom reports' },
+        { key: 'reports.export', label: 'Export Reports', module: 'Reports', description: 'Export reports to files' },
+        
+        // Logs
+        { key: 'logs.view', label: 'View System Logs', module: 'System Logs', description: 'View audit and system logs' },
+        { key: 'logs.export', label: 'Export Logs', module: 'System Logs', description: 'Export log files' }
+      ];
+
+      for (const perm of defaultPermissions) {
+        await sequelize.query(`
+          INSERT INTO permissions (\`key\`, label, module, description)
+          VALUES (?, ?, ?, ?)
+        `, {
+          replacements: [perm.key, perm.label, perm.module, perm.description]
+        });
+      }
+
+      logger.info(`✅ Seeded ${defaultPermissions.length} default permissions`);
+    } else {
+      logger.info('✓ Permissions table already exists (TASK15)');
+    }
+
+    // Check if role_permissions table exists (TASK15)
+    const [rolePermissionsTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'role_permissions';
+    `);
+
+    if (rolePermissionsTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating role_permissions table (TASK15)...');
+      
+      await sequelize.query(`
+        CREATE TABLE role_permissions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          role ENUM('captain', 'secretary', 'staff') NOT NULL COMMENT 'Admin role type',
+          permissionKey VARCHAR(100) NOT NULL COMMENT 'References permissions.key',
+          granted BOOLEAN DEFAULT TRUE NOT NULL COMMENT 'Whether permission is granted',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_role_permission (role, permissionKey),
+          INDEX idx_role (role),
+          INDEX idx_permission (permissionKey)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Maps permissions to roles';
+      `);
+      
+      logger.info('✅ Migration completed: role_permissions table created');
+
+      // Seed default role permissions based on current system behavior
+      logger.info('📝 Seeding default role permissions...');
+
+      const rolePermissions = {
+        captain: [
+          'dashboard.view', 'dashboard.analytics', 'dashboard.reports',
+          'residents.view', 'residents.details', 'residents.verify', 'residents.reject', 'residents.suspend',
+          'requests.view', 'requests.approve', 'requests.reject', 'requests.process', 'requests.complete', 'requests.download', 'requests.generate',
+          'complaints.view', 'complaints.assign', 'complaints.update', 'complaints.resolve',
+          'announcements.view', 'announcements.create', 'announcements.edit', 'announcements.delete', 'announcements.publish',
+          'users.view', 'users.create', 'users.edit', 'users.deactivate',
+          'reports.view', 'reports.generate', 'reports.export',
+          'logs.view', 'logs.export'
+        ],
+        secretary: [
+          'dashboard.view', 'dashboard.analytics',
+          'residents.view', 'residents.details', 'residents.verify', 'residents.reject',
+          'requests.view', 'requests.approve', 'requests.reject', 'requests.process', 'requests.complete', 'requests.download', 'requests.generate',
+          'complaints.view', 'complaints.assign', 'complaints.update',
+          'announcements.view', 'announcements.create', 'announcements.edit', 'announcements.publish',
+          'users.view',
+          'reports.view', 'reports.generate'
+        ],
+        staff: [
+          'dashboard.view',
+          'residents.view', 'residents.details',
+          'requests.view', 'requests.process', 'requests.download',
+          'complaints.view', 'complaints.update',
+          'announcements.view',
+          'reports.view'
+        ]
+      };
+
+      for (const [role, permissions] of Object.entries(rolePermissions)) {
+        for (const permKey of permissions) {
+          await sequelize.query(`
+            INSERT INTO role_permissions (role, permissionKey, granted)
+            VALUES (?, ?, TRUE)
+          `, {
+            replacements: [role, permKey]
+          });
+        }
+      }
+
+      logger.info('✅ Seeded default role permissions for captain, secretary, and staff');
+    } else {
+      logger.info('✓ Role_permissions table already exists (TASK15)');
+    }
+
+    // Check if DocumentServices table exists (TASK15)
+    const [docServicesTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'DocumentServices';
+    `);
+
+    if (docServicesTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating DocumentServices table (TASK15)...');
+      
+      await sequelize.query(`
+        CREATE TABLE DocumentServices (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(255) NOT NULL UNIQUE COMMENT 'Document/service name',
+          description TEXT NULL COMMENT 'Description of the document/service',
+          category VARCHAR(100) NULL COMMENT 'Category grouping',
+          processingFee DECIMAL(10,2) DEFAULT 0.00 COMMENT 'Fee in pesos',
+          isFree BOOLEAN DEFAULT FALSE COMMENT 'Whether document is free',
+          processingDays INT DEFAULT 3 COMMENT 'Standard processing time in days',
+          isAvailable BOOLEAN DEFAULT TRUE COMMENT 'Whether service is currently available',
+          allowOnlineRequest BOOLEAN DEFAULT TRUE COMMENT 'Can be requested online',
+          requiresVerification BOOLEAN DEFAULT TRUE COMMENT 'Requires verification step',
+          requiresApproval BOOLEAN DEFAULT TRUE COMMENT 'Requires admin approval',
+          priority INT DEFAULT 100 COMMENT 'Sort order priority',
+          maxRequests INT NULL COMMENT 'Max requests per resident (if applicable)',
+          notes TEXT NULL COMMENT 'Additional notes or requirements',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_category (category),
+          INDEX idx_available (isAvailable),
+          INDEX idx_priority (priority)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Dynamic document and service configuration';
+      `);
+      
+      logger.info('✅ Migration completed: DocumentServices table created');
+
+      // Seed default document services based on current system
+      logger.info('📝 Seeding default document services...');
+
+      const defaultServices = [
+        { name: 'Barangay Clearance', description: 'Barangay clearance certificate for various purposes', category: 'Certificates', processingFee: 50.00, processingDays: 2, priority: 1 },
+        { name: 'Certificate of Residency', description: 'Certificate proving residency in the barangay', category: 'Certificates', processingFee: 30.00, processingDays: 1, priority: 2 },
+        { name: 'Certificate of Indigency', description: 'Certificate for indigent residents', category: 'Certificates', processingFee: 0.00, isFree: true, processingDays: 2, priority: 3 },
+        { name: 'Business Clearance', description: 'Clearance for business permit application', category: 'Business', processingFee: 100.00, processingDays: 3, priority: 4 },
+        { name: 'Barangay ID', description: 'Official barangay identification card', category: 'ID', processingFee: 50.00, processingDays: 5, priority: 5 },
+        { name: 'Community Tax Certificate (Cedula)', description: 'Community tax certificate', category: 'Certificates', processingFee: 20.00, processingDays: 1, priority: 6 },
+        { name: 'Certificate of Good Moral Character', description: 'Character certificate for employment or school', category: 'Certificates', processingFee: 30.00, processingDays: 2, priority: 7 },
+        { name: 'Travel Permit', description: 'Permit for travel purposes (if required)', category: 'Permits', processingFee: 0.00, isFree: true, processingDays: 1, priority: 8 },
+        { name: 'Guardianship Certificate', description: 'Certificate of guardianship', category: 'Certificates', processingFee: 50.00, processingDays: 3, priority: 9 },
+        { name: 'First Time Job Seeker Certificate', description: 'Certificate for first-time job seekers', category: 'Certificates', processingFee: 0.00, isFree: true, processingDays: 1, priority: 10 }
+      ];
+
+      for (const service of defaultServices) {
+        await sequelize.query(`
+          INSERT INTO DocumentServices (name, description, category, processingFee, isFree, processingDays, priority)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, {
+          replacements: [service.name, service.description, service.category, service.processingFee, service.isFree, service.processingDays, service.priority]
+        });
+      }
+
+      logger.info(`✅ Seeded ${defaultServices.length} default document services`);
+    } else {
+      logger.info('✓ DocumentServices table already exists (TASK15)');
+    }
+
+    // Check if system_settings table exists (TASK15)
+    const [systemSettingsTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'system_settings';
+    `);
+
+    if (systemSettingsTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating system_settings table (TASK15)...');
+      
+      await sequelize.query(`
+        CREATE TABLE system_settings (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          \`key\` VARCHAR(100) NOT NULL UNIQUE COMMENT 'Setting key identifier',
+          value TEXT NULL COMMENT 'Setting value (can be JSON)',
+          type ENUM('string', 'number', 'boolean', 'json') DEFAULT 'string' COMMENT 'Value data type',
+          label VARCHAR(255) NOT NULL COMMENT 'Human-readable label',
+          description TEXT NULL COMMENT 'Description of setting',
+          category VARCHAR(100) NOT NULL COMMENT 'barangay, request, security, notification, resident',
+          updatedBy INT NULL COMMENT 'User ID who last updated',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_category (category),
+          INDEX idx_key (\`key\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='System-wide configuration settings';
+      `);
+      
+      logger.info('✅ Migration completed: system_settings table created');
+
+      // Seed default system settings
+      logger.info('📝 Seeding default system settings...');
+
+      const defaultSettings = [
+        // Barangay Information
+        { key: 'barangay_name', value: 'Barangay Bakilid', type: 'string', label: 'Barangay Name', category: 'barangay', description: 'Official barangay name' },
+        { key: 'municipality', value: 'Mandaue City', type: 'string', label: 'Municipality/City', category: 'barangay', description: 'Municipality or city' },
+        { key: 'province', value: 'Cebu', type: 'string', label: 'Province', category: 'barangay', description: 'Province name' },
+        { key: 'barangay_email', value: 'barangaybakilid@mandaue.gov.ph', type: 'string', label: 'Official Email', category: 'barangay', description: 'Official contact email' },
+        { key: 'barangay_contact', value: '(032) 123-4567', type: 'string', label: 'Contact Number', category: 'barangay', description: 'Official contact number' },
+        { key: 'office_address', value: 'Bakilid, Mandaue City, Cebu', type: 'string', label: 'Office Address', category: 'barangay', description: 'Physical office address' },
+        { key: 'office_hours', value: 'Monday - Friday, 8:00 AM - 5:00 PM', type: 'string', label: 'Office Hours', category: 'barangay', description: 'Operating hours' },
+        
+        // Request Settings
+        { key: 'default_processing_days', value: '3', type: 'number', label: 'Default Processing Days', category: 'request', description: 'Default processing time for requests' },
+        { key: 'max_pending_requests', value: '5', type: 'number', label: 'Max Pending Requests', category: 'request', description: 'Maximum pending requests per resident' },
+        { key: 'request_expiration_days', value: '30', type: 'number', label: 'Request Expiration (Days)', category: 'request', description: 'Days before unclaimed requests expire' },
+        { key: 'allow_request_cancellation', value: 'true', type: 'boolean', label: 'Allow Request Cancellation', category: 'request', description: 'Residents can cancel pending requests' },
+        
+        // Resident Account Settings
+        { key: 'registration_enabled', value: 'true', type: 'boolean', label: 'Registration Enabled', category: 'resident', description: 'Allow new resident registration' },
+        { key: 'account_verification_required', value: 'true', type: 'boolean', label: 'Account Verification Required', category: 'resident', description: 'New accounts require admin verification' },
+        { key: 'pending_account_expiration_days', value: '30', type: 'number', label: 'Pending Account Expiration', category: 'resident', description: 'Days before unverified accounts expire' },
+        { key: 'min_password_length', value: '8', type: 'number', label: 'Minimum Password Length', category: 'resident', description: 'Minimum characters for passwords' },
+        { key: 'session_timeout_minutes', value: '60', type: 'number', label: 'Session Timeout (Minutes)', category: 'resident', description: 'Auto-logout after inactivity' },
+        
+        // Notification Settings
+        { key: 'email_notifications_enabled', value: 'true', type: 'boolean', label: 'Email Notifications', category: 'notification', description: 'Send email notifications' },
+        { key: 'notify_on_request_status', value: 'true', type: 'boolean', label: 'Request Status Notifications', category: 'notification', description: 'Notify residents on request status changes' },
+        { key: 'notify_on_new_announcement', value: 'true', type: 'boolean', label: 'New Announcement Notifications', category: 'notification', description: 'Notify residents of new announcements' },
+        
+        // Security Settings
+        { key: 'max_login_attempts', value: '5', type: 'number', label: 'Max Login Attempts', category: 'security', description: 'Failed attempts before account lockout' },
+        { key: 'account_lockout_minutes', value: '15', type: 'number', label: 'Account Lockout Duration', category: 'security', description: 'Minutes account is locked after max attempts' },
+        { key: 'require_captcha', value: 'true', type: 'boolean', label: 'Require CAPTCHA', category: 'security', description: 'Require CAPTCHA on login and registration' },
+        { key: 'rate_limit_per_minute', value: '100', type: 'number', label: 'API Rate Limit', category: 'security', description: 'Max API requests per minute per IP' }
+      ];
+
+      for (const setting of defaultSettings) {
+        await sequelize.query(`
+          INSERT INTO system_settings (\`key\`, value, type, label, category, description)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, {
+          replacements: [setting.key, setting.value, setting.type, setting.label, setting.category, setting.description]
+        });
+      }
+
+      logger.info(`✅ Seeded ${defaultSettings.length} default system settings`);
+    } else {
+      logger.info('✓ System_settings table already exists (TASK15)');
+    }
+
+    // Check if feature_flags table exists (TASK15)
+    const [featureFlagsTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'feature_flags';
+    `);
+
+    if (featureFlagsTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating feature_flags table (TASK15)...');
+      
+      await sequelize.query(`
+        CREATE TABLE feature_flags (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          \`key\` VARCHAR(100) NOT NULL UNIQUE COMMENT 'Feature key identifier',
+          label VARCHAR(255) NOT NULL COMMENT 'Human-readable feature name',
+          description TEXT NULL COMMENT 'Feature description',
+          isEnabled BOOLEAN DEFAULT TRUE NOT NULL COMMENT 'Whether feature is enabled',
+          updatedBy INT NULL COMMENT 'User ID who last updated',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_key (\`key\`),
+          INDEX idx_enabled (isEnabled)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='System feature toggles';
+      `);
+      
+      logger.info('✅ Migration completed: feature_flags table created');
+
+      // Seed default feature flags
+      logger.info('📝 Seeding default feature flags...');
+
+      const defaultFeatures = [
+        { key: 'online_requests', label: 'Online Document Requests', description: 'Allow residents to request documents online', isEnabled: true },
+        { key: 'complaints_module', label: 'Complaints System', description: 'Enable complaint filing and management', isEnabled: true },
+        { key: 'announcements_module', label: 'Announcements', description: 'Enable barangay announcements and news', isEnabled: true },
+        { key: 'resident_verification', label: 'Resident Verification', description: 'Require admin verification for new accounts', isEnabled: true },
+        { key: 'notifications', label: 'Notifications System', description: 'Real-time notifications for users', isEnabled: true },
+        { key: 'reports_analytics', label: 'Reports & Analytics', description: 'Advanced reporting and analytics dashboards', isEnabled: true },
+        { key: 'online_payments', label: 'Online Payments', description: 'Online payment processing for fees', isEnabled: false },
+        { key: 'digital_delivery', label: 'Digital Document Delivery', description: 'Digital delivery of approved documents', isEnabled: false },
+        { key: 'mobile_app', label: 'Mobile App Integration', description: 'Mobile app API and features', isEnabled: false }
+      ];
+
+      for (const feature of defaultFeatures) {
+        await sequelize.query(`
+          INSERT INTO feature_flags (\`key\`, label, description, isEnabled)
+          VALUES (?, ?, ?, ?)
+        `, {
+          replacements: [feature.key, feature.label, feature.description, feature.isEnabled]
+        });
+      }
+
+      logger.info(`✅ Seeded ${defaultFeatures.length} default feature flags`);
+    } else {
+      logger.info('✓ Feature_flags table already exists (TASK15)');
+    }
+
+    // Check if audit_logs table exists (TASK15)
+    const [auditLogsTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'audit_logs';
+    `);
+
+    if (auditLogsTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating audit_logs table (TASK15)...');
+      
+      await sequelize.query(`
+        CREATE TABLE audit_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          userId INT NULL COMMENT 'User who performed the action',
+          userRole VARCHAR(50) NULL COMMENT 'Role of the user at the time',
+          action VARCHAR(255) NOT NULL COMMENT 'Action performed e.g. LOGIN, UPDATE_PERMISSION',
+          module VARCHAR(100) NOT NULL COMMENT 'Module/section affected',
+          targetId INT NULL COMMENT 'ID of affected entity',
+          targetType VARCHAR(100) NULL COMMENT 'Type of affected entity',
+          description TEXT NULL COMMENT 'Human-readable description',
+          oldValue JSON NULL COMMENT 'Previous value (if applicable)',
+          newValue JSON NULL COMMENT 'New value (if applicable)',
+          ipAddress VARCHAR(45) NULL COMMENT 'IP address of requester',
+          status VARCHAR(50) DEFAULT 'success' COMMENT 'success, failure, error',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_user (userId),
+          INDEX idx_action (action),
+          INDEX idx_module (module),
+          INDEX idx_created (createdAt),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Comprehensive audit trail for security and compliance';
+      `);
+      
+      logger.info('✅ Migration completed: audit_logs table created');
+      logger.info('🔐 TASK15: Superadmin system control is now active');
+      logger.info('   - Dynamic permissions and roles');
+      logger.info('   - Configurable document services');
+      logger.info('   - System settings management');
+      logger.info('   - Feature flags');
+      logger.info('   - Comprehensive audit logging');
+    } else {
+      logger.info('✓ Audit_logs table already exists (TASK15)');
+    }
+
+    // ============ NEW: Request Model Update - DocumentServiceId Migration ============
+    
+    // Check if DocumentServiceId column exists in Requests table
+    const [docServiceIdCheck] = await sequelize.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Requests' 
+        AND COLUMN_NAME = 'DocumentServiceId';
+    `);
+
+    if (docServiceIdCheck.length === 0) {
+      logger.info('⚙️ Running automatic migration: Updating Requests table to use DocumentServiceId...');
+      
+      // Step 1: Add DocumentServiceId column
+      await sequelize.query(`
+        ALTER TABLE Requests
+        ADD COLUMN DocumentServiceId INT NULL AFTER id
+      `);
+      logger.info('✅ Added DocumentServiceId column');
+      
+      // Step 2: Convert documentType from ENUM to VARCHAR(255)
+      await sequelize.query(`
+        ALTER TABLE Requests
+        MODIFY COLUMN documentType VARCHAR(255) NULL
+      `);
+      logger.info('✅ Converted documentType to VARCHAR(255)');
+      
+      // Step 3: Add new tracking fields
+      const trackingFields = [
+        { name: 'requestedDate', type: 'DATETIME', default: 'CURRENT_TIMESTAMP' },
+        { name: 'processedBy', type: 'INT', default: 'NULL' },
+        { name: 'processingFee', type: 'DECIMAL(10,2)', default: '0.00' },
+        { name: 'paymentStatus', type: "ENUM('Unpaid','Paid','Waived')", default: "'Unpaid'" },
+      ];
+
+      for (const field of trackingFields) {
+        const [fieldCheck] = await sequelize.query(`
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'Requests' 
+            AND COLUMN_NAME = '${field.name}'
+        `);
+
+        if (fieldCheck.length === 0) {
+          await sequelize.query(`
+            ALTER TABLE Requests
+            ADD COLUMN ${field.name} ${field.type} DEFAULT ${field.default}
+          `);
+          logger.info(`✅ Added ${field.name} column`);
+        }
+      }
+      
+      // Step 4: Migrate existing data - map old documentType to DocumentServiceId
+      logger.info('📝 Migrating existing request data...');
+      
+      const documentTypeMapping = [
+        { oldName: 'Barangay Clearance', newName: 'Barangay Clearance' },
+        { oldName: 'Certificate of Residency', newName: 'Certificate of Residency' },
+        { oldName: 'Indigency Certificate', newName: 'Certificate of Indigency' },
+        { oldName: 'Business Permit', newName: 'Business Clearance' },
+        { oldName: 'Certificate of Good Moral', newName: 'Certificate of Good Moral Character' },
+        { oldName: 'Community Tax Certificate (Cedula)', newName: 'Community Tax Certificate (Cedula)' },
+      ];
+
+      for (const mapping of documentTypeMapping) {
+        const [service] = await sequelize.query(`
+          SELECT id FROM DocumentServices WHERE name = ?
+        `, { replacements: [mapping.newName] });
+
+        if (service.length > 0) {
+          const serviceId = service[0].id;
+          await sequelize.query(`
+            UPDATE Requests
+            SET DocumentServiceId = ?
+            WHERE documentType = ? AND DocumentServiceId IS NULL
+          `, { replacements: [serviceId, mapping.oldName] });
+          
+          logger.info(`   ✓ Migrated "${mapping.oldName}" → DocumentServiceId: ${serviceId}`);
+        }
+      }
+      
+      // Step 5: Delete any requests without mapped DocumentServiceId
+      const [nullCountResult] = await sequelize.query(`
+        SELECT COUNT(*) as count FROM Requests WHERE DocumentServiceId IS NULL
+      `);
+      
+      if (nullCountResult[0].count > 0) {
+        logger.info(`⚠️  Deleting ${nullCountResult[0].count} requests without mapped services...`);
+        await sequelize.query(`DELETE FROM Requests WHERE DocumentServiceId IS NULL`);
+      }
+      
+      // Step 6: Make DocumentServiceId NOT NULL
+      await sequelize.query(`
+        ALTER TABLE Requests
+        MODIFY COLUMN DocumentServiceId INT NOT NULL
+      `);
+      logger.info('✅ Made DocumentServiceId required');
+      
+      // Step 7: Add foreign key constraint
+      try {
+        await sequelize.query(`
+          ALTER TABLE Requests
+          ADD CONSTRAINT fk_requests_document_service
+          FOREIGN KEY (DocumentServiceId) REFERENCES DocumentServices(id)
+          ON DELETE RESTRICT ON UPDATE CASCADE
+        `);
+        logger.info('✅ Added foreign key constraint');
+      } catch (error) {
+        if (error.message && error.message.includes('Duplicate')) {
+          logger.info('⏭️  Foreign key constraint already exists');
+        } else {
+          throw error;
+        }
+      }
+      
+      logger.info('✅ Request model migration completed successfully');
+      logger.info('📄 Requests now use dynamic DocumentServices instead of hardcoded ENUMs');
+      logger.info('🎯 Benefits:');
+      logger.info('   - Superadmin can add/edit document services dynamically');
+      logger.info('   - Residents see all available services automatically');
+      logger.info('   - Support for processing fees, free documents, and custom settings');
+    } else {
+      logger.info('✓ Requests table already updated with DocumentServiceId');
+    }
+
   } catch (error) {
     logger.error('❌ Auto-migration error:', error.message);
     logger.error('Stack trace:', error.stack);

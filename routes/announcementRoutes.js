@@ -15,7 +15,7 @@ import {
     deleteComment
 } from "../controllers/announcementController.js";
 import { authMiddleware, optionalAuth } from "../middleware/authMiddleware.js";
-import { roleMiddleware } from "../middleware/roleMiddleware.js";
+import { roleMiddleware, requirePermission } from "../middleware/roleMiddleware.js";
 import { noCache, cacheShort } from "../middleware/cacheMiddleware.js";
 
 // Multer configuration for memory storage (no disk writes)
@@ -129,9 +129,9 @@ router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), upload.sin
  *       200:
  *         description: Announcement deleted
  *       403:
- *         description: Admin or Captain role required
+ *         description: Insufficient permissions - requires announcements.delete permission
  */
-router.delete("/:id", roleMiddleware(["admin", "captain"]), deleteAnnouncement);
+router.delete("/:id", authMiddleware, requirePermission("announcements.delete"), deleteAnnouncement);
 
 /**
  * @swagger

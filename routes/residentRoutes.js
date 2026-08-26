@@ -11,7 +11,8 @@ import {
     rejectResident,
     getMyProfile,
     updateMyProfile,
-    changePassword
+    changePassword,
+    getActiveDocumentServices
 } from "../controllers/residentController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -20,6 +21,32 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(authMiddleware);
+
+/**
+ * @swagger
+ * /api/residents/document-services:
+ *   get:
+ *     summary: Get all active document services available for request
+ *     tags: [Residents]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active document services retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     services:
+ *                       type: array
+ */
+router.get("/document-services", getActiveDocumentServices);
 
 /**
  * @swagger

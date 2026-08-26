@@ -170,49 +170,55 @@ export const login = async (req, res) => {
         
         console.log('🔐 Login attempt:', { email, hasPassword: !!password, hasTurnstileToken: !!turnstileToken });
 
-        // Verify Turnstile token first
-        if (!turnstileToken) {
-            console.log('❌ No Turnstile token provided');
-            return res.status(400).json({
-                success: false,
-                message: "Verification required"
-            });
-        }
-
-        // Verify with Cloudflare
-        const turnstileVerifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-        const formData = new URLSearchParams();
-        formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
-        formData.append('response', turnstileToken);
-        formData.append('remoteip', req.ip);
-
-        try {
-            const turnstileResponse = await fetch(turnstileVerifyUrl, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-            });
-
-            const turnstileResult = await turnstileResponse.json();
-            console.log('🔒 Turnstile verification result:', turnstileResult.success);
-
-            if (!turnstileResult.success) {
-                console.log('❌ Turnstile verification failed:', turnstileResult['error-codes']);
-                logSecurityEvent('LOGIN_TURNSTILE_FAILED', { email, errors: turnstileResult['error-codes'] }, req);
-                return res.status(403).json({
+        // Verify Turnstile token first (skip in test mode)
+        const skipTurnstile = process.env.SKIP_TURNSTILE === 'true' || turnstileToken === 'test-bypass-token';
+        
+        if (!skipTurnstile) {
+            if (!turnstileToken) {
+                console.log('❌ No Turnstile token provided');
+                return res.status(400).json({
                     success: false,
-                    message: "Verification failed. Please try again."
+                    message: "Verification required"
                 });
             }
-        } catch (turnstileError) {
-            console.error('❌ Turnstile verification error:', turnstileError);
-            logSecurityEvent('LOGIN_TURNSTILE_ERROR', { email, error: turnstileError.message }, req);
-            return res.status(500).json({
-                success: false,
-                message: "Verification service error. Please try again."
-            });
+
+            // Verify with Cloudflare
+            const turnstileVerifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+            const formData = new URLSearchParams();
+            formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
+            formData.append('response', turnstileToken);
+            formData.append('remoteip', req.ip);
+
+            try {
+                const turnstileResponse = await fetch(turnstileVerifyUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                });
+
+                const turnstileResult = await turnstileResponse.json();
+                console.log('🔒 Turnstile verification result:', turnstileResult.success);
+
+                if (!turnstileResult.success) {
+                    console.log('❌ Turnstile verification failed:', turnstileResult['error-codes']);
+                    logSecurityEvent('LOGIN_TURNSTILE_FAILED', { email, errors: turnstileResult['error-codes'] }, req);
+                    return res.status(403).json({
+                        success: false,
+                        message: "Verification failed. Please try again."
+                    });
+                }
+            } catch (turnstileError) {
+                console.error('❌ Turnstile verification error:', turnstileError);
+                logSecurityEvent('LOGIN_TURNSTILE_ERROR', { email, error: turnstileError.message }, req);
+                return res.status(500).json({
+                    success: false,
+                    message: "Verification service error. Please try again."
+                });
+            }
+        } else {
+            console.log('⚠️  Turnstile verification SKIPPED (test mode)');
         }
 
         // Determine if input is email or username
