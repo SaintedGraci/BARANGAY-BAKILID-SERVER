@@ -3,6 +3,12 @@ import logger from './config/logger.js';
 
 export async function autoMigrate() {
   try {
+    logger.info('🚀 Starting auto-migration process...');
+    
+    // Test database connection first
+    await sequelize.authenticate();
+    logger.info('✅ Database connection established');
+    
     // Check if status column exists
     const [results] = await sequelize.query(`
       SELECT COLUMN_NAME 
@@ -1092,8 +1098,9 @@ export async function autoMigrate() {
     }
 
   } catch (error) {
-    logger.error('❌ Auto-migration error:', error.message);
-    logger.error('Stack trace:', error.stack);
+    logger.error('❌ Auto-migration error:', error.message || error);
+    logger.error('Stack trace:', error.stack || 'No stack trace available');
+    logger.error('Full error object:', JSON.stringify(error, null, 2));
     // Don't crash the server, just log the error
   }
 }

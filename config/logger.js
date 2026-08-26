@@ -37,44 +37,54 @@ const format = winston.format.combine(
 
 // Define which transports the logger must use
 const transports = [
-    // Console transport
+    // Console transport (always available)
     new winston.transports.Console({
         format: winston.format.combine(
             winston.format.colorize(),
             winston.format.simple()
         )
-    }),
-    // Error log file
-    new winston.transports.File({
-        filename: path.join(__dirname, '../logs/error.log'),
-        level: 'error',
-        format: winston.format.combine(
-            winston.format.uncolorize(),
-            winston.format.json()
-        )
-    }),
-    // Combined log file
-    new winston.transports.File({
-        filename: path.join(__dirname, '../logs/combined.log'),
-        format: winston.format.combine(
-            winston.format.uncolorize(),
-            winston.format.json()
-        )
-    }),
-    // Security events log file
-    new winston.transports.File({
-        filename: path.join(__dirname, '../logs/security.log'),
-        level: 'warn',
-        format: winston.format.combine(
-            winston.format.uncolorize(),
-            winston.format.json()
-        )
-    }),
+    })
 ];
+
+// Only add file transports in non-production or if logs directory exists
+if (process.env.NODE_ENV !== 'production') {
+    try {
+        transports.push(
+            // Error log file
+            new winston.transports.File({
+                filename: path.join(__dirname, '../logs/error.log'),
+                level: 'error',
+                format: winston.format.combine(
+                    winston.format.uncolorize(),
+                    winston.format.json()
+                )
+            }),
+            // Combined log file
+            new winston.transports.File({
+                filename: path.join(__dirname, '../logs/combined.log'),
+                format: winston.format.combine(
+                    winston.format.uncolorize(),
+                    winston.format.json()
+                )
+            }),
+            // Security events log file
+            new winston.transports.File({
+                filename: path.join(__dirname, '../logs/security.log'),
+                level: 'warn',
+                format: winston.format.combine(
+                    winston.format.uncolorize(),
+                    winston.format.json()
+                )
+            })
+        );
+    } catch (error) {
+        console.warn('File logging not available:', error.message);
+    }
+}
 
 // Create the logger
 const logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'warn' : 'debug',
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
     levels,
     format,
     transports,
