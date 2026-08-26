@@ -448,6 +448,78 @@ export async function autoMigrate() {
       logger.info(`✅ Seeded ${defaultPermissions.length} default permissions`);
     } else {
       logger.info('✓ Permissions table already exists (TASK15)');
+      
+      // Check if we need to seed data
+      const [permCount] = await sequelize.query(`SELECT COUNT(*) as count FROM permissions`);
+      if (permCount[0].count === 0) {
+        logger.info('📝 Permissions table exists but is empty. Seeding default permissions...');
+        
+        const defaultPermissions = [
+          // Dashboard
+          { key: 'dashboard.view', label: 'View Dashboard', module: 'Dashboard', description: 'Access to main dashboard' },
+          { key: 'dashboard.analytics', label: 'View Analytics', module: 'Dashboard', description: 'View analytics and statistics' },
+          { key: 'dashboard.reports', label: 'View Reports', module: 'Dashboard', description: 'Access reporting features' },
+          
+          // Residents
+          { key: 'residents.view', label: 'View Residents', module: 'Residents', description: 'View resident list and profiles' },
+          { key: 'residents.details', label: 'View Resident Details', module: 'Residents', description: 'View detailed resident information' },
+          { key: 'residents.verify', label: 'Verify Residents', module: 'Residents', description: 'Verify resident accounts' },
+          { key: 'residents.reject', label: 'Reject Residents', module: 'Residents', description: 'Reject resident verifications' },
+          { key: 'residents.suspend', label: 'Suspend Residents', module: 'Residents', description: 'Suspend resident accounts' },
+          { key: 'residents.delete', label: 'Delete Residents', module: 'Residents', description: 'Delete resident accounts' },
+          
+          // Requests
+          { key: 'requests.view', label: 'View Requests', module: 'Requests', description: 'View document requests' },
+          { key: 'requests.approve', label: 'Approve Requests', module: 'Requests', description: 'Approve document requests' },
+          { key: 'requests.reject', label: 'Reject Requests', module: 'Requests', description: 'Reject document requests' },
+          { key: 'requests.process', label: 'Process Requests', module: 'Requests', description: 'Process and update requests' },
+          { key: 'requests.complete', label: 'Mark as Completed', module: 'Requests', description: 'Mark requests as completed' },
+          { key: 'requests.download', label: 'Download Documents', module: 'Requests', description: 'Download request documents' },
+          { key: 'requests.generate', label: 'Generate Documents', module: 'Requests', description: 'Generate official documents' },
+          
+          // Complaints
+          { key: 'complaints.view', label: 'View Complaints', module: 'Complaints', description: 'View filed complaints' },
+          { key: 'complaints.assign', label: 'Assign Complaints', module: 'Complaints', description: 'Assign complaints to staff' },
+          { key: 'complaints.update', label: 'Update Complaint Status', module: 'Complaints', description: 'Update complaint status' },
+          { key: 'complaints.resolve', label: 'Resolve Complaints', module: 'Complaints', description: 'Mark complaints as resolved' },
+          
+          // Announcements
+          { key: 'announcements.view', label: 'View Announcements', module: 'Announcements', description: 'View all announcements' },
+          { key: 'announcements.create', label: 'Create Announcements', module: 'Announcements', description: 'Create new announcements' },
+          { key: 'announcements.edit', label: 'Edit Announcements', module: 'Announcements', description: 'Edit existing announcements' },
+          { key: 'announcements.delete', label: 'Delete Announcements', module: 'Announcements', description: 'Delete announcements' },
+          { key: 'announcements.publish', label: 'Publish Announcements', module: 'Announcements', description: 'Publish announcements' },
+          
+          // User Management
+          { key: 'users.view', label: 'View Users', module: 'User Management', description: 'View admin user accounts' },
+          { key: 'users.create', label: 'Create Users', module: 'User Management', description: 'Create new admin accounts' },
+          { key: 'users.edit', label: 'Edit Users', module: 'User Management', description: 'Edit admin user accounts' },
+          { key: 'users.deactivate', label: 'Deactivate Users', module: 'User Management', description: 'Deactivate admin accounts' },
+          { key: 'users.reset', label: 'Reset User Access', module: 'User Management', description: 'Reset passwords and access' },
+          
+          // Reports
+          { key: 'reports.view', label: 'View Reports', module: 'Reports', description: 'View system reports' },
+          { key: 'reports.generate', label: 'Generate Reports', module: 'Reports', description: 'Generate custom reports' },
+          { key: 'reports.export', label: 'Export Reports', module: 'Reports', description: 'Export reports to files' },
+          
+          // Logs
+          { key: 'logs.view', label: 'View System Logs', module: 'System Logs', description: 'View audit and system logs' },
+          { key: 'logs.export', label: 'Export Logs', module: 'System Logs', description: 'Export log files' }
+        ];
+
+        for (const perm of defaultPermissions) {
+          await sequelize.query(`
+            INSERT INTO permissions (\`key\`, label, module, description)
+            VALUES (?, ?, ?, ?)
+          `, {
+            replacements: [perm.key, perm.label, perm.module, perm.description]
+          });
+        }
+
+        logger.info(`✅ Seeded ${defaultPermissions.length} default permissions`);
+      } else {
+        logger.info(`✓ Permissions table has ${permCount[0].count} entries`);
+      }
     }
 
     // Check if role_permissions table exists (TASK15)
@@ -525,6 +597,57 @@ export async function autoMigrate() {
       logger.info('✅ Seeded default role permissions for captain, secretary, and staff');
     } else {
       logger.info('✓ Role_permissions table already exists (TASK15)');
+      
+      // Check if we need to seed data
+      const [rolePermCount] = await sequelize.query(`SELECT COUNT(*) as count FROM role_permissions`);
+      if (rolePermCount[0].count === 0) {
+        logger.info('📝 Role_permissions table exists but is empty. Seeding default role permissions...');
+        
+        const rolePermissions = {
+          captain: [
+            'dashboard.view', 'dashboard.analytics', 'dashboard.reports',
+            'residents.view', 'residents.details', 'residents.verify', 'residents.reject', 'residents.suspend',
+            'requests.view', 'requests.approve', 'requests.reject', 'requests.process', 'requests.complete', 'requests.download', 'requests.generate',
+            'complaints.view', 'complaints.assign', 'complaints.update', 'complaints.resolve',
+            'announcements.view', 'announcements.create', 'announcements.edit', 'announcements.delete', 'announcements.publish',
+            'users.view', 'users.create', 'users.edit', 'users.deactivate',
+            'reports.view', 'reports.generate', 'reports.export',
+            'logs.view', 'logs.export'
+          ],
+          secretary: [
+            'dashboard.view', 'dashboard.analytics',
+            'residents.view', 'residents.details', 'residents.verify', 'residents.reject',
+            'requests.view', 'requests.approve', 'requests.reject', 'requests.process', 'requests.complete', 'requests.download', 'requests.generate',
+            'complaints.view', 'complaints.assign', 'complaints.update',
+            'announcements.view', 'announcements.create', 'announcements.edit', 'announcements.publish',
+            'users.view',
+            'reports.view', 'reports.generate'
+          ],
+          staff: [
+            'dashboard.view',
+            'residents.view', 'residents.details',
+            'requests.view', 'requests.process', 'requests.download',
+            'complaints.view', 'complaints.update',
+            'announcements.view',
+            'reports.view'
+          ]
+        };
+
+        for (const [role, permissions] of Object.entries(rolePermissions)) {
+          for (const permKey of permissions) {
+            await sequelize.query(`
+              INSERT INTO role_permissions (role, permissionKey, granted)
+              VALUES (?, ?, TRUE)
+            `, {
+              replacements: [role, permKey]
+            });
+          }
+        }
+
+        logger.info('✅ Seeded default role permissions for captain, secretary, and staff');
+      } else {
+        logger.info(`✓ Role_permissions table has ${rolePermCount[0].count} entries`);
+      }
     }
 
     // Check if DocumentServices table exists (TASK15)
@@ -676,6 +799,36 @@ export async function autoMigrate() {
       logger.info(`✅ Seeded ${defaultSettings.length} default system settings`);
     } else {
       logger.info('✓ System_settings table already exists (TASK15)');
+      
+      // Check if table is empty and seed if needed
+      const [settingsCount] = await sequelize.query(`SELECT COUNT(*) as count FROM system_settings`);
+      if (settingsCount[0].count === 0) {
+        logger.info('📝 System_settings table exists but is empty. Seeding default settings...');
+        
+        const defaultSettings = [
+          { key: 'system_name', value: 'Barangay Management System', type: 'text', label: 'System Name', category: 'general', description: 'Official name of the system' },
+          { key: 'barangay_name', value: 'Barangay Bakilid', type: 'text', label: 'Barangay Name', category: 'general', description: 'Official barangay name' },
+          { key: 'contact_email', value: 'barangay@example.com', type: 'email', label: 'Contact Email', category: 'contact', description: 'Primary contact email' },
+          { key: 'contact_phone', value: '+63 XXX XXX XXXX', type: 'tel', label: 'Contact Phone', category: 'contact', description: 'Primary contact phone number' },
+          { key: 'office_hours', value: 'Mon-Fri 8:00 AM - 5:00 PM', type: 'text', label: 'Office Hours', category: 'general', description: 'Barangay office operating hours' },
+          { key: 'maintenance_mode', value: 'false', type: 'boolean', label: 'Maintenance Mode', category: 'system', description: 'Enable to put system under maintenance' },
+          { key: 'allow_registrations', value: 'true', type: 'boolean', label: 'Allow Registrations', category: 'system', description: 'Allow new resident registrations' },
+          { key: 'require_email_verification', value: 'false', type: 'boolean', label: 'Require Email Verification', category: 'security', description: 'Require email verification for new accounts' },
+          { key: 'session_timeout', value: '3600', type: 'number', label: 'Session Timeout (seconds)', category: 'security', description: 'User session timeout duration' },
+          { key: 'max_login_attempts', value: '5', type: 'number', label: 'Max Login Attempts', category: 'security', description: 'Maximum failed login attempts before lockout' }
+        ];
+        
+        for (const setting of defaultSettings) {
+          await sequelize.query(`
+            INSERT INTO system_settings (\`key\`, value, type, label, category, description)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, {
+            replacements: [setting.key, setting.value, setting.type, setting.label, setting.category, setting.description]
+          });
+        }
+        
+        logger.info(`✅ Seeded ${defaultSettings.length} default system settings into empty table`);
+      }
     }
 
     // Check if feature_flags table exists (TASK15)
@@ -734,6 +887,35 @@ export async function autoMigrate() {
       logger.info(`✅ Seeded ${defaultFeatures.length} default feature flags`);
     } else {
       logger.info('✓ Feature_flags table already exists (TASK15)');
+      
+      // Check if table is empty and seed if needed
+      const [featuresCount] = await sequelize.query(`SELECT COUNT(*) as count FROM feature_flags`);
+      if (featuresCount[0].count === 0) {
+        logger.info('📝 Feature_flags table exists but is empty. Seeding default features...');
+        
+        const defaultFeatures = [
+          { key: 'online_requests', label: 'Online Document Requests', description: 'Allow residents to request documents online', isEnabled: true },
+          { key: 'complaints_module', label: 'Complaints System', description: 'Enable complaint filing and management', isEnabled: true },
+          { key: 'announcements_module', label: 'Announcements', description: 'Enable barangay announcements and news', isEnabled: true },
+          { key: 'resident_verification', label: 'Resident Verification', description: 'Require admin verification for new accounts', isEnabled: true },
+          { key: 'notifications', label: 'Notifications System', description: 'Real-time notifications for users', isEnabled: true },
+          { key: 'reports_analytics', label: 'Reports & Analytics', description: 'Advanced reporting and analytics dashboards', isEnabled: true },
+          { key: 'online_payments', label: 'Online Payments', description: 'Online payment processing for fees', isEnabled: false },
+          { key: 'digital_delivery', label: 'Digital Document Delivery', description: 'Digital delivery of approved documents', isEnabled: false },
+          { key: 'mobile_app', label: 'Mobile App Integration', description: 'Mobile app API and features', isEnabled: false }
+        ];
+        
+        for (const feature of defaultFeatures) {
+          await sequelize.query(`
+            INSERT INTO feature_flags (\`key\`, label, description, isEnabled)
+            VALUES (?, ?, ?, ?)
+          `, {
+            replacements: [feature.key, feature.label, feature.description, feature.isEnabled]
+          });
+        }
+        
+        logger.info(`✅ Seeded ${defaultFeatures.length} default feature flags into empty table`);
+      }
     }
 
     // Check if audit_logs table exists (TASK15)
