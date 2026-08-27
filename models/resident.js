@@ -36,6 +36,23 @@ const Resident = sequelize.define("Resident", {
         type: DataTypes.STRING,
     },
 
+    gmail: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: {
+            name: 'unique_gmail',
+            msg: 'This Gmail address is already registered'
+        },
+        validate: {
+            isEmail: true,
+            isGmail(value) {
+                if (value && !/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(value)) {
+                    throw new Error('Only Gmail addresses are allowed');
+                }
+            }
+        }
+    },
+
     purok: {
         type: DataTypes.STRING,
     },

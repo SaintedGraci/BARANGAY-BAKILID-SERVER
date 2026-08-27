@@ -44,6 +44,22 @@ export const register = async (req, res) => {
             address, purok
         } = req.body;
 
+        // Check if Gmail is already registered (if provided)
+        if (gmail) {
+            const existingGmail = await Resident.findOne({ 
+                where: { gmail },
+                include: [{ model: User, where: { isVerified: true } }]
+            });
+            
+            if (existingGmail) {
+                logSecurityEvent('REGISTRATION_ATTEMPT_DUPLICATE_GMAIL', { gmail }, req);
+                return res.status(400).json({
+                    success: false,
+                    message: "This Gmail address is already registered"
+                });
+            }
+        }
+
         // Check if username or email already exists
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
@@ -511,6 +527,23 @@ export const sendVerificationCode = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "This email is already registered and verified"
+            });
+        }
+
+        // Check if Gmail is already used by a verified resident
+        const existingResident = await Resident.findOne({
+            where: { gmail: email },
+            include: [{ 
+                model: User, 
+                where: { isVerified: true },
+                required: true
+            }]
+        });
+
+        if (existingResident) {
+            return res.status(400).json({
+                success: false,
+                message: "This Gmail address is already registered"
             });
         }
 
