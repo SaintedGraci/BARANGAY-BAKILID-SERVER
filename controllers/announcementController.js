@@ -1,5 +1,7 @@
 import Announcement from "../models/announcement.js";
 import Image from "../models/image.js";
+import AnnouncementComment from "../models/announcementComment.js";
+import AnnouncementReaction from "../models/announcementReaction.js";
 import { uploadImageWithVariants } from "../config/r2.js";
 import { convertObjectUrls } from "../utils/imageProxy.js";
 import logger from "../config/logger.js";
@@ -265,7 +267,18 @@ export const deleteAnnouncement = async (req, res) => {
             return res.status(404).json({ message: "Announcement not found" });
         }
 
-        // Delete from database (Cloudinary files can stay)
+        // Delete related records first (cascade delete)
+        // Delete comments
+        await AnnouncementComment.destroy({
+            where: { announcementId: id }
+        });
+
+        // Delete reactions
+        await AnnouncementReaction.destroy({
+            where: { announcementId: id }
+        });
+
+        // Now delete the announcement
         await announcement.destroy();
 
         return res.status(200).json({
