@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
-import { sendVerificationEmail } from './services/emailService.js';
 
-// Load environment variables
+// Load environment variables FIRST before any imports
 dotenv.config();
+
+// Now import email service after env vars are loaded
+import { sendVerificationEmail } from './services/emailService.js';
 
 async function testResendEmail() {
   console.log('🧪 Testing Resend Email Service...\n');

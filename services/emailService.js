@@ -1,8 +1,17 @@
 import { Resend } from 'resend';
 import logger from '../config/logger.js';
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialize Resend client
+let resend = null;
+const getResendClient = () => {
+  if (!resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY not configured in environment variables');
+    }
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+};
 
 // Generate 6-digit verification code
 export const generateVerificationCode = () => {
@@ -12,10 +21,8 @@ export const generateVerificationCode = () => {
 // Send verification email using Resend API
 export const sendVerificationEmail = async (email, code, name) => {
   try {
-    // Validate API key
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY not configured in environment variables');
-    }
+    // Get Resend client (lazy initialization)
+    const resendClient = getResendClient();
 
     // Email HTML template
     const htmlContent = `
@@ -90,7 +97,7 @@ export const sendVerificationEmail = async (email, code, name) => {
     `;
 
     // Send email via Resend API
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await resendClient.emails.send({
       from: 'Barangay Bakilid <onboarding@resend.dev>', // Will change to custom domain later
       to: email,
       subject: 'Email Verification - Barangay Bakilid',
