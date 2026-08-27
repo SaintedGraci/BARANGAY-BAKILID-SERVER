@@ -515,6 +515,26 @@ export const sendVerificationCode = async (req, res) => {
             });
         }
 
+        // Check cooldown: Prevent sending multiple codes to same email within 60 seconds
+        if (!global.pendingVerifications) {
+            global.pendingVerifications = new Map();
+        }
+
+        const existing = global.pendingVerifications.get(email);
+        if (existing) {
+            const timeSinceLastSent = Date.now() - (existing.sentAt || 0);
+            const cooldownSeconds = 60;
+            
+            if (timeSinceLastSent < cooldownSeconds * 1000) {
+                const remainingSeconds = Math.ceil((cooldownSeconds * 1000 - timeSinceLastSent) / 1000);
+                return res.status(429).json({
+                    success: false,
+                    message: `Please wait ${remainingSeconds} seconds before requesting a new code`,
+                    remainingSeconds
+                });
+            }
+        }
+
         // Check if email is already registered
         const existingUser = await User.findOne({ 
             where: { 
