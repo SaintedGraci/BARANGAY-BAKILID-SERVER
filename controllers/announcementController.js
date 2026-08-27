@@ -192,10 +192,21 @@ export const createAnnouncement = async (req, res) => {
             message: error.message,
             stack: error.stack,
             sql: error.sql,
+            sqlMessage: error.parent?.sqlMessage,
             original: error.original
         });
+        
+        // Check for ENUM validation error
+        if (error.name === 'SequelizeDatabaseError' && 
+            (error.message.includes('Data truncated') || error.message.includes('enum'))) {
+            return res.status(400).json({ 
+                message: "Invalid category value. Please use: General, Emergency, Important, Events, or Advisories",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+        
         return res.status(500).json({ 
-            message: "Server error", 
+            message: "Server error creating announcement", 
             error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }
