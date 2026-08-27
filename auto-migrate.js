@@ -1135,6 +1135,34 @@ export async function autoMigrate() {
       logger.info('✓ Requests table already updated with DocumentServiceId');
     }
 
+    // Check if gmail column exists in Residents table (Email Verification Feature)
+    const [gmailColumnResults] = await sequelize.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Residents' 
+        AND COLUMN_NAME = 'gmail';
+    `);
+
+    if (gmailColumnResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Adding gmail column to Residents table...');
+      
+      await sequelize.query(`
+        ALTER TABLE Residents 
+        ADD COLUMN gmail VARCHAR(255) NULL UNIQUE 
+        AFTER contactNumber;
+      `);
+      
+      logger.info('✅ Migration completed: gmail column added to Residents');
+      logger.info('📧 Email verification during registration is now active');
+      logger.info('🔒 Security features enabled:');
+      logger.info('   - 60-second per-email cooldown');
+      logger.info('   - IP-based rate limiting (5 req/15 min)');
+      logger.info('   - Gmail uniqueness constraint');
+    } else {
+      logger.info('✓ Residents gmail column already exists');
+    }
+
   } catch (error) {
     console.error('❌ Auto-migration error:');
     console.error('Error message:', error?.message || 'No message');
