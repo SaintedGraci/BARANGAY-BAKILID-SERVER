@@ -82,7 +82,7 @@ router.get("/", noCache, optionalAuth, getAllAnnouncements);
  *       403:
  *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.post("/", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), createAnnouncement);
+router.post("/", authMiddleware, roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), createAnnouncement);
 
 /**
  * @swagger
@@ -109,7 +109,7 @@ router.post("/", roleMiddleware(["admin", "captain", "secretary"]), upload.singl
  *       403:
  *         description: Insufficient permissions (Captain, Secretary, or Admin only)
  */
-router.put("/:id", roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), updateAnnouncement);
+router.put("/:id", authMiddleware, roleMiddleware(["admin", "captain", "secretary"]), upload.single('image'), updateAnnouncement);
 
 /**
  * @swagger
@@ -153,7 +153,7 @@ router.delete("/:id", authMiddleware, requirePermission("announcements.delete"),
  *       403:
  *         description: Captain, Secretary, or Admin only
  */
-router.patch("/:id/pin", roleMiddleware(["admin", "captain", "secretary"]), togglePinAnnouncement);
+router.patch("/:id/pin", authMiddleware, roleMiddleware(["admin", "captain", "secretary"]), togglePinAnnouncement);
 
 /**
  * @swagger
@@ -175,7 +175,7 @@ router.patch("/:id/pin", roleMiddleware(["admin", "captain", "secretary"]), togg
  *       403:
  *         description: Captain, Secretary, or Admin only
  */
-router.patch("/:id/archive", roleMiddleware(["admin", "captain", "secretary"]), archiveAnnouncement);
+router.patch("/:id/archive", authMiddleware, roleMiddleware(["admin", "captain", "secretary"]), archiveAnnouncement);
 
 // Reactions and comments routes - MUST come before /:id route to avoid conflicts
 /**
