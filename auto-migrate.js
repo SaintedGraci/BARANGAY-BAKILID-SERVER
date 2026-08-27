@@ -40,6 +40,37 @@ export async function autoMigrate() {
       logger.info('✓ Users table status column already exists');
     }
 
+    // Check if email verification columns exist (EMAIL_VERIFICATION)
+    const [emailVerifResults] = await sequelize.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Users' 
+        AND COLUMN_NAME = 'emailVerificationCode';
+    `);
+
+    if (emailVerifResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Adding email verification columns to Users table...');
+      
+      await sequelize.query(`
+        ALTER TABLE Users 
+        ADD COLUMN emailVerificationCode VARCHAR(10) NULL COMMENT 'Email verification code' AFTER isVerified,
+        ADD COLUMN emailVerificationExpiry DATETIME NULL COMMENT 'Verification code expiry time' AFTER emailVerificationCode,
+        ADD COLUMN isEmailVerified BOOLEAN DEFAULT FALSE COMMENT 'Email verification status' AFTER emailVerificationExpiry;
+      `);
+      
+      // Update existing users - mark admin users as email verified
+      await sequelize.query(`
+        UPDATE Users 
+        SET isEmailVerified = TRUE 
+        WHERE role IN ('admin', 'captain', 'secretary', 'staff');
+      `);
+      
+      logger.info('✅ Migration completed: email verification columns added successfully');
+    } else {
+      logger.info('✓ Users table email verification columns already exist');
+    }
+
     // Check if contactNumber column exists
     const [contactResults] = await sequelize.query(`
       SELECT COLUMN_NAME 

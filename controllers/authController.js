@@ -7,6 +7,8 @@ import RefreshToken from "../models/refreshToken.js";
 import RevokedToken from "../models/revokedToken.js";
 import crypto from "crypto";
 import { logAuthEvent, logSecurityEvent } from "../middleware/loggingMiddleware.js";
+import { sendVerificationEmail, generateVerificationCode } from "../services/emailService.js";
+import logger from "../config/logger.js";
 
 // Token expiration times
 const ACCESS_TOKEN_EXPIRES_IN = '15m'; // Short-lived access token
@@ -145,13 +147,36 @@ export const register = async (req, res) => {
 
         logAuthEvent('REGISTRATION_SUCCESS', newUser.id, true, { email, username });
 
+        // Generate and send verification code
+        try {
+            const verificationCode = generateVerificationCode();
+            const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+            // Store verification code in database
+            await newUser.update({
+                emailVerificationCode: verificationCode,
+                emailVerificationExpiry: expiryTime,
+                isEmailVerified: false
+            });
+
+            // Send verification email
+            await sendVerificationEmail(email, verificationCode, firstName || username);
+            
+            logger.info(`Verification email sent to ${email}`);
+        } catch (emailError) {
+            logger.error('Email sending failed:', emailError.message);
+            // Don't fail registration if email fails
+            // User can request resend later
+        }
+
         return res.status(201).json({
             success: true,
-            message: "Registration submitted successfully. Please wait for admin verification.",
+            message: "Registration submitted successfully. Please check your email for verification code.",
             data: {
                 username: newUser.username,
                 email: newUser.email,
-                verificationStatus: 'pending'
+                verificationStatus: 'pending',
+                requiresEmailVerification: true
             }
         });
     } catch (error) {
@@ -426,6 +451,147 @@ export const logout = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Logout failed"
+        });
+    }
+};
+
+
+// EMAIL VERIFICATION: Verify email with code
+export const verifyEmail = async (req, res) => {
+    try {
+        const { email, code } = req.body;
+
+        if (!email || !code) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and verification code are required"
+            });
+        }
+
+        // Find user by email
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Check if already verified
+        if (user.isEmailVerified) {
+            return res.status(200).json({
+                success: true,
+                message: "Email already verified"
+            });
+        }
+
+        // Check if code matches
+        if (user.emailVerificationCode !== code) {
+            logSecurityEvent('EMAIL_VERIFICATION_FAILED_INVALID_CODE', { email }, req);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification code"
+            });
+        }
+
+        // Check if code expired
+        if (new Date() > new Date(user.emailVerificationExpiry)) {
+            logSecurityEvent('EMAIL_VERIFICATION_FAILED_EXPIRED', { email }, req);
+            return res.status(400).json({
+                success: false,
+                message: "Verification code has expired. Please request a new one."
+            });
+        }
+
+        // Verify email
+        await user.update({
+            isEmailVerified: true,
+            emailVerificationCode: null,
+            emailVerificationExpiry: null
+        });
+
+        logAuthEvent('EMAIL_VERIFIED', user.id, true, { email });
+
+        return res.status(200).json({
+            success: true,
+            message: "Email verified successfully! Awaiting admin approval."
+        });
+    } catch (error) {
+        console.error("Email verification error:", error);
+        logSecurityEvent('EMAIL_VERIFICATION_ERROR', { error: error.message }, req);
+        return res.status(500).json({
+            success: false,
+            message: "Server error during email verification"
+        });
+    }
+};
+
+// EMAIL VERIFICATION: Resend verification code
+export const resendVerificationCode = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            });
+        }
+
+        // Find user by email
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Check if already verified
+        if (user.isEmailVerified) {
+            return res.status(200).json({
+                success: true,
+                message: "Email already verified"
+            });
+        }
+
+        // Get resident for name
+        const resident = await Resident.findOne({ where: { UserId: user.id } });
+        const name = resident ? resident.firstName : user.username;
+
+        // Generate new code
+        const verificationCode = generateVerificationCode();
+        const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Update user with new code
+        await user.update({
+            emailVerificationCode: verificationCode,
+            emailVerificationExpiry: expiryTime
+        });
+
+        // Send verification email
+        await sendVerificationEmail(email, verificationCode, name);
+
+        logAuthEvent('VERIFICATION_CODE_RESENT', user.id, true, { email });
+
+        return res.status(200).json({
+            success: true,
+            message: "Verification code sent! Please check your email."
+        });
+    } catch (error) {
+        console.error("Resend verification code error:", error);
+        
+        // Handle specific email errors
+        if (error.message.includes('authentication failed') || error.message.includes('credentials')) {
+            return res.status(500).json({
+                success: false,
+                message: "Email service is temporarily unavailable. Please try again later."
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to send verification email. Please try again."
         });
     }
 };
