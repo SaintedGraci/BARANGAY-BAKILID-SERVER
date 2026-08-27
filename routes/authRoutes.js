@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, refreshToken, logout, verifyEmail, resendVerificationCode } from "../controllers/authController.js";
+import { register, login, refreshToken, logout, verifyEmail, resendVerificationCode, sendVerificationCode, verifyCodeBeforeRegistration } from "../controllers/authController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { uploadToR2Middleware } from "../middleware/r2UploadMiddleware.js";
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from "../middleware/rateLimitMiddleware.js";
@@ -241,9 +241,12 @@ router.get("/me", authMiddleware, async (req, res) => {
  */
 router.post("/logout", authMiddleware, logout);
 
-export default router;
+// EMAIL VERIFICATION ROUTES (before registration)
+router.post("/send-verification-code", sendVerificationCode);
+router.post("/verify-code-before-registration", verifyCodeBeforeRegistration);
 
-
-// EMAIL VERIFICATION ROUTES
+// EMAIL VERIFICATION ROUTES (after registration)
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerificationCode);
+
+export default router;

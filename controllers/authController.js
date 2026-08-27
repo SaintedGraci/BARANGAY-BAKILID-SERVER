@@ -147,36 +147,59 @@ export const register = async (req, res) => {
 
         logAuthEvent('REGISTRATION_SUCCESS', newUser.id, true, { email, username });
 
-        // Generate and send verification code
-        try {
-            const verificationCode = generateVerificationCode();
-            const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+        // Check if email was pre-verified during Step 2
+        let emailVerified = false;
+        if (global.pendingVerifications && global.pendingVerifications.has(email)) {
+            const verification = global.pendingVerifications.get(email);
+            if (verification.verified) {
+                emailVerified = true;
+                // Mark email as verified
+                await newUser.update({
+                    isEmailVerified: true,
+                    emailVerificationCode: null,
+                    emailVerificationExpiry: null
+                });
+                // Clean up temporary storage
+                global.pendingVerifications.delete(email);
+                logger.info(`Email pre-verified during registration: ${email}`);
+            }
+        }
 
-            // Store verification code in database
-            await newUser.update({
-                emailVerificationCode: verificationCode,
-                emailVerificationExpiry: expiryTime,
-                isEmailVerified: false
-            });
+        // If email wasn't pre-verified, generate and send verification code
+        if (!emailVerified) {
+            try {
+                const verificationCode = generateVerificationCode();
+                const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-            // Send verification email
-            await sendVerificationEmail(email, verificationCode, firstName || username);
-            
-            logger.info(`Verification email sent to ${email}`);
-        } catch (emailError) {
-            logger.error('Email sending failed:', emailError.message);
-            // Don't fail registration if email fails
-            // User can request resend later
+                // Store verification code in database
+                await newUser.update({
+                    emailVerificationCode: verificationCode,
+                    emailVerificationExpiry: expiryTime,
+                    isEmailVerified: false
+                });
+
+                // Send verification email
+                await sendVerificationEmail(email, verificationCode, firstName || username);
+                
+                logger.info(`Verification email sent to ${email}`);
+            } catch (emailError) {
+                logger.error('Email sending failed:', emailError.message);
+                // Don't fail registration if email fails
+                // User can request resend later
+            }
         }
 
         return res.status(201).json({
             success: true,
-            message: "Registration submitted successfully. Please check your email for verification code.",
+            message: emailVerified 
+                ? "Registration submitted successfully. Awaiting admin approval."
+                : "Registration submitted successfully. Please check your email for verification code.",
             data: {
                 username: newUser.username,
                 email: newUser.email,
                 verificationStatus: 'pending',
-                requiresEmailVerification: true
+                requiresEmailVerification: !emailVerified,
+                isEmailVerified: emailVerified
             }
         });
     } catch (error) {
@@ -455,6 +478,143 @@ export const logout = async (req, res) => {
     }
 };
 
+
+// EMAIL VERIFICATION: Send verification code (before registration)
+export const sendVerificationCode = async (req, res) => {
+    try {
+        const { email, name } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            });
+        }
+
+        // Validate email format
+        if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid Gmail address"
+            });
+        }
+
+        // Check if email is already registered
+        const existingUser = await User.findOne({ 
+            where: { 
+                email: email,
+                isEmailVerified: true 
+            } 
+        });
+        
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "This email is already registered and verified"
+            });
+        }
+
+        // Generate verification code
+        const verificationCode = generateVerificationCode();
+        const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Store in session or temporary storage (using a Map for now)
+        // In production, you might want to use Redis
+        if (!global.pendingVerifications) {
+            global.pendingVerifications = new Map();
+        }
+        
+        global.pendingVerifications.set(email, {
+            code: verificationCode,
+            expiry: expiryTime,
+            verified: false
+        });
+
+        // Send verification email
+        await sendVerificationEmail(email, verificationCode, name || 'User');
+
+        logger.info(`Verification code sent to ${email} (pre-registration)`);
+
+        return res.status(200).json({
+            success: true,
+            message: "Verification code sent! Please check your email."
+        });
+    } catch (error) {
+        console.error("Send verification code error:", error);
+        
+        if (error.message.includes('authentication failed') || error.message.includes('credentials')) {
+            return res.status(500).json({
+                success: false,
+                message: "Email service is temporarily unavailable. Please try again later."
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to send verification email. Please try again."
+        });
+    }
+};
+
+// EMAIL VERIFICATION: Verify code (before registration)
+export const verifyCodeBeforeRegistration = async (req, res) => {
+    try {
+        const { email, code } = req.body;
+
+        if (!email || !code) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and verification code are required"
+            });
+        }
+
+        // Check pending verifications
+        if (!global.pendingVerifications || !global.pendingVerifications.has(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "No verification code found. Please request a new one."
+            });
+        }
+
+        const verification = global.pendingVerifications.get(email);
+
+        // Check if code matches
+        if (verification.code !== code) {
+            logSecurityEvent('EMAIL_VERIFICATION_FAILED_INVALID_CODE', { email }, req);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification code"
+            });
+        }
+
+        // Check if code expired
+        if (new Date() > verification.expiry) {
+            global.pendingVerifications.delete(email);
+            logSecurityEvent('EMAIL_VERIFICATION_FAILED_EXPIRED', { email }, req);
+            return res.status(400).json({
+                success: false,
+                message: "Verification code has expired. Please request a new one."
+            });
+        }
+
+        // Mark as verified
+        verification.verified = true;
+        global.pendingVerifications.set(email, verification);
+
+        logger.info(`Email verified (pre-registration): ${email}`);
+
+        return res.status(200).json({
+            success: true,
+            message: "Email verified successfully!"
+        });
+    } catch (error) {
+        console.error("Verify code error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error during verification"
+        });
+    }
+};
 
 // EMAIL VERIFICATION: Verify email with code
 export const verifyEmail = async (req, res) => {
