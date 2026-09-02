@@ -1163,6 +1163,48 @@ export async function autoMigrate() {
       logger.info('✓ Residents gmail column already exists');
     }
 
+    // ============ TASK 18: Selfie Verification ============
+    
+    // Check if selfieUrl column exists in Residents table
+    const [selfieUrlResults] = await sequelize.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'Residents' 
+        AND COLUMN_NAME = 'selfieUrl';
+    `);
+
+    if (selfieUrlResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Adding selfie verification columns to Residents table (TASK18)...');
+      
+      // Add selfieUrl column
+      await sequelize.query(`
+        ALTER TABLE Residents 
+        ADD COLUMN selfieUrl VARCHAR(255) NULL 
+        COMMENT 'Selfie photo URL for identity verification' 
+        AFTER proofOfResidency;
+      `);
+      
+      // Add rejectionReason column
+      await sequelize.query(`
+        ALTER TABLE Residents 
+        ADD COLUMN rejectionReason TEXT NULL 
+        COMMENT 'Reason for account rejection if applicable' 
+        AFTER verificationStatus;
+      `);
+      
+      logger.info('✅ Migration completed: Selfie verification columns added to Residents');
+      logger.info('📸 TASK18: Selfie verification is now active');
+      logger.info('🔒 Privacy-first approach:');
+      logger.info('   - NO facial recognition or AI processing');
+      logger.info('   - NO biometric data stored');
+      logger.info('   - 100% manual human review by administrators');
+      logger.info('   - Selfie stored securely in R2 with other documents');
+      logger.info('   - Rejection reasons logged for transparency');
+    } else {
+      logger.info('✓ Residents selfie verification columns already exist (TASK18)');
+    }
+
   } catch (error) {
     console.error('❌ Auto-migration error:');
     console.error('Error message:', error?.message || 'No message');
