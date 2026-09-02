@@ -4,7 +4,8 @@ import {
     getRequestById, 
     createRequest, 
     updateRequest, 
-    deleteRequest
+    deleteRequest,
+    sendPickupEmail
 } from "../controllers/requestContoller.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -153,5 +154,44 @@ router.put("/:id", roleMiddleware(["staff", "secretary", "admin", "captain"]), u
  *         description: Request not found
  */
 router.delete("/:id", deleteRequest); // Removed role restriction - validation is done in controller
+
+/**
+ * @swagger
+ * /api/requests/{id}/send-pickup-email:
+ *   post:
+ *     summary: Send pickup notification email for Ready for Release documents
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Manually send email notification to resident when document is ready for pickup. Requires admin role.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Request ID
+ *     responses:
+ *       200:
+ *         description: Email sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Invalid status or email already sent
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Request not found or no email address
+ */
+router.post("/:id/send-pickup-email", roleMiddleware(["admin", "secretary", "captain"]), sendPickupEmail);
 
 export default router;

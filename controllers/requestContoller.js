@@ -301,3 +301,137 @@ export const deleteRequest = async (req, res) => {
         });
     }
 };
+
+export const sendPickupEmail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Check admin permissions
+        const isAdmin = ['admin', 'secretary', 'captain', 'superadmin'].includes(userRole);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "You don't have permission to send pickup notifications"
+            });
+        }
+
+        // Find request with resident and user data
+        const request = await Request.findByPk(id, {
+            include: [{
+                model: Resident,
+                attributes: ['id', 'firstName', 'lastName', 'gmail', 'contactNumber'],
+                include: [{
+                    model: User,
+                    attributes: ['id', 'email', 'username']
+                }]
+            }]
+        });
+
+        if (!request) {
+            return res.status(404).json({
+                success: false,
+                message: "Request not found"
+            });
+        }
+
+        // Verify status is "Ready for Release"
+        if (request.status !== 'Ready for Release') {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot send pickup email. Request status must be "Ready for Release" (current: ${request.status})`
+            });
+        }
+
+        // Get resident email (prefer gmail, fallback to user email)
+        const residentEmail = request.Resident?.gmail || request.Resident?.User?.email;
+        
+        if (!residentEmail) {
+            return res.status(400).json({
+                success: false,
+                message: "Resident does not have an email address registered"
+            });
+        }
+
+        // Check if email was already sent for this request
+        const existingNotification = await Notification.findOne({
+            where: {
+                UserId: request.Resident.User.id,
+                type: 'DOCUMENT_READY_FOR_PICKUP',
+                data: {
+                    requestId: id
+                }
+            }
+        });
+
+        if (existingNotification) {
+            const sentAt = new Date(existingNotification.createdAt).toLocaleString();
+            return res.status(400).json({
+                success: false,
+                message: "Pickup notification has already been sent",
+                sentAt: sentAt
+            });
+        }
+
+        // Send email using emailService
+        const { sendPickupNotificationEmail } = await import('../services/emailService.js');
+        
+        const emailData = {
+            residentName: `${request.Resident.firstName} ${request.Resident.lastName}`,
+            documentType: request.documentType,
+            requestId: request.id,
+            requestDate: new Date(request.createdAt).toLocaleDateString(),
+            pickupLocation: 'Barangay Bakilid Office',
+            officeHours: 'Monday - Friday, 8:00 AM - 5:00 PM'
+        };
+
+        const emailResult = await sendPickupNotificationEmail(residentEmail, emailData);
+
+        // Save notification to database
+        await Notification.create({
+            UserId: request.Resident.User.id,
+            type: 'DOCUMENT_READY_FOR_PICKUP',
+            title: 'Document Ready for Pickup',
+            message: `Your ${request.documentType} is ready for pickup at the Barangay Bakilid Office`,
+            data: {
+                requestId: request.id,
+                documentType: request.documentType,
+                emailSentTo: residentEmail,
+                messageId: emailResult.messageId,
+                sentAt: new Date()
+            },
+            read: false
+        });
+
+        // Emit Socket.IO notification
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${request.Resident.User.id}`).emit('documentReadyForPickup', {
+                requestId: request.id,
+                documentType: request.documentType,
+                message: `Your ${request.documentType} is ready for pickup`
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Pickup notification email sent successfully",
+            data: {
+                requestId: request.id,
+                sentTo: residentEmail,
+                documentType: request.documentType
+            }
+        });
+
+    } catch (error) {
+        console.error("Send pickup email error:", error);
+        
+        // Return user-friendly error
+        return res.status(500).json({
+            success: false,
+            message: "Failed to send pickup notification email",
+            error: error.message
+        });
+    }
+};
