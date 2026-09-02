@@ -182,58 +182,73 @@ export const register = async (req, res) => {
 
         logAuthEvent('REGISTRATION_SUCCESS', newUser.id, true, { email, username });
 
-        // Check if email was pre-verified during Step 2
+        // TASK18: Gmail is optional - only verify email if Gmail was provided
         let emailVerified = false;
-        if (global.pendingVerifications && global.pendingVerifications.has(email)) {
-            const verification = global.pendingVerifications.get(email);
-            if (verification.verified) {
-                emailVerified = true;
-                // Mark email as verified
-                await newUser.update({
-                    isEmailVerified: true,
-                    emailVerificationCode: null,
-                    emailVerificationExpiry: null
-                });
-                // Clean up temporary storage
-                global.pendingVerifications.delete(email);
-                logger.info(`Email pre-verified during registration: ${email}`);
+        let requiresEmailVerification = false;
+        
+        if (gmail) {
+            // Gmail provided - check if it was pre-verified during Step 2
+            if (global.pendingVerifications && global.pendingVerifications.has(gmail)) {
+                const verification = global.pendingVerifications.get(gmail);
+                if (verification.verified) {
+                    emailVerified = true;
+                    // Mark email as verified
+                    await newUser.update({
+                        isEmailVerified: true,
+                        emailVerificationCode: null,
+                        emailVerificationExpiry: null
+                    });
+                    // Clean up temporary storage
+                    global.pendingVerifications.delete(gmail);
+                    logger.info(`Gmail pre-verified during registration: ${gmail}`);
+                }
             }
-        }
 
-        // If email wasn't pre-verified, generate and send verification code
-        if (!emailVerified) {
-            try {
-                const verificationCode = generateVerificationCode();
-                const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+            // If Gmail wasn't pre-verified, generate and send verification code
+            if (!emailVerified) {
+                requiresEmailVerification = true;
+                try {
+                    const verificationCode = generateVerificationCode();
+                    const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-                // Store verification code in database
-                await newUser.update({
-                    emailVerificationCode: verificationCode,
-                    emailVerificationExpiry: expiryTime,
-                    isEmailVerified: false
-                });
+                    // Store verification code in database
+                    await newUser.update({
+                        emailVerificationCode: verificationCode,
+                        emailVerificationExpiry: expiryTime,
+                        isEmailVerified: false
+                    });
 
-                // Send verification email
-                await sendVerificationEmail(email, verificationCode, firstName || username);
-                
-                logger.info(`Verification email sent to ${email}`);
-            } catch (emailError) {
-                logger.error('Email sending failed:', emailError.message);
-                // Don't fail registration if email fails
-                // User can request resend later
+                    // Send verification email to Gmail (not username email)
+                    await sendVerificationEmail(gmail, verificationCode, firstName || username);
+                    
+                    logger.info(`Verification email sent to Gmail: ${gmail}`);
+                } catch (emailError) {
+                    logger.error('Email sending failed:', emailError.message);
+                    // Don't fail registration if email fails
+                    // User can request resend later
+                }
             }
+        } else {
+            // No Gmail provided - skip email verification entirely
+            await newUser.update({
+                isEmailVerified: false,
+                emailVerificationCode: null,
+                emailVerificationExpiry: null
+            });
+            logger.info(`Registration without Gmail - skipping email verification for ${username}`);
         }
 
         return res.status(201).json({
             success: true,
-            message: emailVerified 
-                ? "Registration submitted successfully. Awaiting admin approval."
-                : "Registration submitted successfully. Please check your email for verification code.",
+            message: gmail && requiresEmailVerification
+                ? "Registration submitted successfully. Please check your Gmail for verification code."
+                : "Registration submitted successfully. Awaiting admin approval.",
             data: {
                 username: newUser.username,
                 email: newUser.email,
+                gmail: gmail || null,
                 verificationStatus: 'pending',
-                requiresEmailVerification: !emailVerified,
+                requiresEmailVerification: requiresEmailVerification,
                 isEmailVerified: emailVerified
             }
         });
