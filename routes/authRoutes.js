@@ -73,6 +73,10 @@ const router = express.Router();
  *                 type: string
  *                 format: binary
  *                 description: Proof of residency document (JPEG, PNG, PDF)
+ *               selfie:
+ *                 type: string
+ *                 format: binary
+ *                 description: Identity selfie for manual verification (JPEG, PNG)
  *     responses:
  *       201:
  *         description: Registration submitted successfully
@@ -93,7 +97,8 @@ router.post("/register",
     registerLimiter, 
     uploadToR2Middleware([
         { name: 'validId', maxCount: 1 },
-        { name: 'proofOfResidency', maxCount: 1 }
+        { name: 'proofOfResidency', maxCount: 1 },
+        { name: 'selfie', maxCount: 1 }
     ]),
     registerValidation,
     handleValidationErrors,

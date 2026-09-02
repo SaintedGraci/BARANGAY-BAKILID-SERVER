@@ -310,6 +310,9 @@ export const approveResident = async (req, res) => {
         // Update user verification status
         await resident.User.update({ isVerified: true });
 
+        // Log the approval action
+        logger.info(`Resident verification approved: ${resident.id} by admin ${req.user.id}. Name: ${resident.firstName} ${resident.lastName}`);
+
         return res.status(200).json({
             success: true,
             message: "Resident approved successfully",
@@ -341,11 +344,17 @@ export const rejectResident = async (req, res) => {
             });
         }
 
-        // Update resident verification status
-        await resident.update({ verificationStatus: 'rejected' });
+        // Update resident verification status and rejection reason
+        await resident.update({ 
+            verificationStatus: 'rejected',
+            rejectionReason: reason || 'No reason provided'
+        });
         
         // Keep user as not verified
         await resident.User.update({ isVerified: false });
+
+        // Log the rejection action
+        logger.info(`Resident verification rejected: ${resident.id} by admin ${req.user.id}. Reason: ${reason || 'No reason provided'}`);
 
         return res.status(200).json({
             success: true,

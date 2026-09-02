@@ -59,6 +59,7 @@ Project barangay_system {
   gender enum('Male','Female') [null]
   birthDate date [null]
   contactNumber varchar(255) [null]
+  gmail varchar(255) [null, unique, note: 'Optional Gmail for email verification']
   purok varchar(255) [null, note: 'Subdivision/zone']
   address varchar(255) [null]
   citizenship varchar(255) [default: 'Filipino']
@@ -70,11 +71,12 @@ Project barangay_system {
   
   indexes {
     (firstName, lastName)
+    gmail
     purok
     verificationStatus
   }
   
-  Note: 'Resident profile and verification information'
+  Note: 'Resident profile and verification information with optional email verification'
 }
 
 `;
@@ -83,7 +85,7 @@ Project barangay_system {
   dbml += `Table Requests {
   id int [pk, increment]
   ResidentId int [not null, ref: > Residents.id, note: 'Foreign key to Residents']
-  documentType enum('Barangay Clearance','Certificate of Residency','Indigency Certificate','Business Permit','Certificate of Good Moral','Community Tax Certificate (Cedula)') [not null]
+  DocumentServiceId int [not null, ref: > DocumentServices.id, note: 'Foreign key to DocumentServices']
   purpose varchar(255) [not null, note: 'Reason for request']
   status enum('Pending','Processing','Ready for Release','Claimed','Rejected') [not null, default: 'Pending']
   remarks text [null, note: 'Admin notes']
@@ -93,11 +95,11 @@ Project barangay_system {
   
   indexes {
     status
-    documentType
+    DocumentServiceId
     createdAt
   }
   
-  Note: 'Document requests from residents'
+  Note: 'Document requests from residents using dynamic DocumentServices'
 }
 
 `;
@@ -118,30 +120,6 @@ Project barangay_system {
   }
   
   Note: 'Complaints filed by residents'
-}
-
-`;
-
-  // Officials Table
-  dbml += `Table Officials {
-  id int [pk, increment]
-  firstName varchar(255) [not null]
-  middleName varchar(255) [null]
-  lastName varchar(255) [not null]
-  position enum('Barangay Captain','Barangay Kagawad','SK Chairman','Barangay Secretary','Barangay Treasurer') [not null]
-  contactNumber varchar(255) [null]
-  termStart date [null]
-  termEnd date [null]
-  isActive boolean [not null, default: 1]
-  createdAt datetime [not null, default: \`now()\`]
-  updatedAt datetime [not null, default: \`now()\`]
-  
-  indexes {
-    position
-    isActive
-  }
-  
-  Note: 'Barangay officials information'
 }
 
 `;
@@ -274,43 +252,188 @@ Project barangay_system {
   dbml += `Table images {
   id int [pk, increment]
   original_name varchar(255) [not null, note: 'Original filename']
-  r2_key varchar(255) [not null, unique, note: 'Cloudflare R2 storage key']
-  url varchar(255) [not null, note: 'Public CDN URL']
+  r2_key varchar(500) [not null, unique, note: 'Cloudflare R2 storage key']
+  url varchar(1000) [not null, note: 'Public CDN URL']
   width int [null]
   height int [null]
   size int [not null, note: 'File size in bytes']
-  mimetype varchar(255) [not null, note: 'MIME type (image/webp)']
-  category varchar(255) [null, note: 'announcements, documents, profiles']
-  related_type varchar(255) [null, note: 'Announcement, Resident, Request']
+  mimetype varchar(50) [not null, default: 'image/webp', note: 'MIME type']
+  category varchar(100) [null, note: 'announcements, documents, profiles']
+  related_type varchar(100) [null, note: 'Announcement, Resident, Request']
   related_id int [null, note: 'ID of related entity']
   uploaded_by int [null, note: 'User ID who uploaded']
   is_deleted boolean [not null, default: 0]
-  createdAt datetime [not null, default: \`now()\`]
-  updatedAt datetime [not null, default: \`now()\`]
+  created_at datetime [not null, default: \`now()\`]
+  updated_at datetime [not null, default: \`now()\`]
   
   indexes {
     r2_key
     category
     (related_type, related_id)
     uploaded_by
+    created_at
   }
   
-  Note: 'Optimized images stored in Cloudflare R2'
+  Note: 'Optimized images stored in Cloudflare R2 (TASK8)'
+}
+
+`;
+
+  // permissions Table
+  dbml += `Table permissions {
+  id int [pk, increment]
+  key varchar(100) [not null, unique, note: 'e.g. complaints.view']
+  label varchar(255) [not null, note: 'Human-readable label']
+  module varchar(100) [not null, note: 'Dashboard, Residents, Requests, etc.']
+  description text [null, note: 'Permission description']
+  createdAt datetime [not null, default: \`now()\`]
+  updatedAt datetime [not null, default: \`now()\`]
+  
+  indexes {
+    key
+    module
+  }
+  
+  Note: 'System permissions for RBAC (TASK15)'
+}
+
+`;
+
+  // role_permissions Table
+  dbml += `Table role_permissions {
+  id int [pk, increment]
+  role enum('captain','secretary','staff') [not null, note: 'Admin role type']
+  permissionKey varchar(100) [not null, note: 'References permissions.key']
+  granted boolean [not null, default: 1, note: 'Whether permission is granted']
+  createdAt datetime [not null, default: \`now()\`]
+  updatedAt datetime [not null, default: \`now()\`]
+  
+  indexes {
+    (role, permissionKey) [unique]
+    permissionKey
+  }
+  
+  Note: 'Role-based permissions mapping (TASK15)'
+}
+
+`;
+
+  // DocumentServices Table
+  dbml += `Table DocumentServices {
+  id int [pk, increment]
+  name varchar(255) [not null, unique, note: 'Service name']
+  description text [null]
+  category enum('Certificates','Permits','Clearances','IDs') [not null, default: 'Certificates']
+  processingFee decimal(10,2) [not null, default: 0.00]
+  isFree boolean [not null, default: 0]
+  processingDays int [not null, default: 3, note: 'Expected processing time']
+  requirements text [null, note: 'JSON array of requirements']
+  isActive boolean [not null, default: 1]
+  priority int [not null, default: 0, note: 'Display order']
+  createdAt datetime [not null, default: \`now()\`]
+  updatedAt datetime [not null, default: \`now()\`]
+  
+  indexes {
+    name
+    category
+    isActive
+    priority
+  }
+  
+  Note: 'Dynamic document services (TASK15)'
+}
+
+`;
+
+  // System_settings Table
+  dbml += `Table System_settings {
+  id int [pk, increment]
+  key varchar(100) [not null, unique]
+  value text [null]
+  type enum('string','number','boolean','json') [not null, default: 'string']
+  description text [null]
+  category varchar(100) [null, note: 'General, Security, Email, etc.']
+  isEditable boolean [not null, default: 1]
+  createdAt datetime [not null, default: \`now()\`]
+  updatedAt datetime [not null, default: \`now()\`]
+  
+  indexes {
+    key
+    category
+  }
+  
+  Note: 'System configuration settings (TASK15)'
+}
+
+`;
+
+  // Feature_flags Table
+  dbml += `Table Feature_flags {
+  id int [pk, increment]
+  feature varchar(100) [not null, unique]
+  isEnabled boolean [not null, default: 0]
+  description text [null]
+  createdAt datetime [not null, default: \`now()\`]
+  updatedAt datetime [not null, default: \`now()\`]
+  
+  indexes {
+    feature
+    isEnabled
+  }
+  
+  Note: 'Feature toggles for system features (TASK15)'
+}
+
+`;
+
+  // Audit_logs Table
+  dbml += `Table Audit_logs {
+  id int [pk, increment]
+  UserId int [null, ref: > Users.id, note: 'User who performed action']
+  action varchar(100) [not null, note: 'CREATE, UPDATE, DELETE, etc.']
+  entity varchar(100) [not null, note: 'Table/entity affected']
+  entityId int [null, note: 'ID of affected record']
+  changes json [null, note: 'Before/after data']
+  ipAddress varchar(45) [null]
+  userAgent text [null]
+  createdAt datetime [not null, default: \`now()\`]
+  
+  indexes {
+    UserId
+    (entity, entityId)
+    action
+    createdAt
+  }
+  
+  Note: 'System audit trail (TASK15)'
 }
 
 `;
 
   // Add relationship notes
   dbml += `// Relationships Overview
+// Core User & Resident Management
 // Users -> Residents (One-to-One)
 // Residents -> Requests (One-to-Many)
 // Residents -> Complaints (One-to-Many)
-// Users -> Notifications (One-to-Many)
+
+// Authentication & Authorization
 // Users -> refresh_tokens (One-to-Many)
+// Users -> Notifications (One-to-Many)
+
+// Announcements & Interactions
 // Announcements -> AnnouncementReactions (One-to-Many)
 // Announcements -> AnnouncementComments (One-to-Many)
 // Users -> AnnouncementReactions (One-to-Many)
 // Users -> AnnouncementComments (One-to-Many)
+
+// RBAC & Document Services (TASK15)
+// Requests -> DocumentServices (Many-to-One)
+// Users -> Audit_logs (One-to-Many)
+
+// Image Management (TASK8)
+// Images table stores optimized WebP images in Cloudflare R2
+// Linked via related_type and related_id (polymorphic)
 `;
 
   return dbml;

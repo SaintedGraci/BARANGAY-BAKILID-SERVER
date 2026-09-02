@@ -94,12 +94,14 @@ export const register = async (req, res) => {
         // Handle file uploads from R2
         let validIdPath = null;
         let proofOfResidencyPath = null;
+        let selfieUrl = null;
         
         try {
             validIdPath = req.files?.validId?.[0]?.r2Url || null;
             proofOfResidencyPath = req.files?.proofOfResidency?.[0]?.r2Url || null;
+            selfieUrl = req.files?.selfie?.[0]?.r2Url || null;
             
-            console.log('✅ R2 Upload successful:', { validIdPath, proofOfResidencyPath });
+            console.log('✅ R2 Upload successful:', { validIdPath, proofOfResidencyPath, selfieUrl });
         } catch (uploadError) {
             console.log('⚠️  File upload warning during registration:', uploadError.message);
         }
@@ -118,11 +120,12 @@ export const register = async (req, res) => {
             purok,
             validIdPath,
             proofOfResidencyPath,
+            selfieUrl,
             verificationStatus: 'pending'
         });
 
         // Save document image metadata to images table
-        if (validIdPath || proofOfResidencyPath) {
+        if (validIdPath || proofOfResidencyPath || selfieUrl) {
             try {
                 if (validIdPath && req.files?.validId?.[0]) {
                     const file = req.files.validId[0];
@@ -147,6 +150,22 @@ export const register = async (req, res) => {
                         originalName: file.originalname || 'proof-of-residency',
                         r2Key: r2Key,
                         url: proofOfResidencyPath,
+                        size: file.size || 0,
+                        mimetype: file.mimetype || 'image/webp',
+                        category: 'documents',
+                        relatedType: 'Resident',
+                        relatedId: null,
+                        uploadedBy: newUser.id,
+                    });
+                }
+                
+                if (selfieUrl && req.files?.selfie?.[0]) {
+                    const file = req.files.selfie[0];
+                    const r2Key = file.r2Key || selfieUrl.replace(process.env.R2_PUBLIC_URL + '/', '');
+                    await Image.create({
+                        originalName: file.originalname || 'identity-selfie',
+                        r2Key: r2Key,
+                        url: selfieUrl,
                         size: file.size || 0,
                         mimetype: file.mimetype || 'image/webp',
                         category: 'documents',

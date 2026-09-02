@@ -76,9 +76,21 @@ const Resident = sequelize.define("Resident", {
         allowNull: true,
     },
 
+    selfieUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'URL/path to resident selfie for manual identity verification by admin'
+    },
+
     verificationStatus: {
         type: DataTypes.ENUM("pending", "verified", "rejected"),
         defaultValue: "pending",
+    },
+
+    rejectionReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Reason provided by admin when rejecting registration'
     }
 
 });
