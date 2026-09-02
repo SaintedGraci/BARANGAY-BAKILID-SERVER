@@ -1,6 +1,5 @@
 import Resident from "../models/resident.js";
 import User from "../models/user.js";
-import Resident from "../models/resident.js";
 import bcrypt from "bcryptjs";
 import { paginateQuery } from "../utils/pagination.js";
 import APIResponse from "../utils/apiResponse.js";
