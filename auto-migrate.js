@@ -1182,7 +1182,7 @@ export async function autoMigrate() {
         ALTER TABLE Residents 
         ADD COLUMN selfieUrl VARCHAR(255) NULL 
         COMMENT 'Selfie photo URL for identity verification' 
-        AFTER proofOfResidency;
+        AFTER proofOfResidencyPath;
       `);
       
       // Add rejectionReason column
