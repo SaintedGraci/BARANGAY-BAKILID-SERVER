@@ -24,7 +24,7 @@ export function convertToProxyUrl(r2Url, backendUrl = process.env.BACKEND_URL) {
  * @param {Array<string>} fields - Fields to convert
  * @returns {Object} - Object with converted URLs
  */
-export function convertObjectUrls(obj, fields = ['imagePath', 'thumbnailUrl', 'mediumUrl', 'largeUrl', 'validIdPath', 'proofOfResidencyPath']) {
+export function convertObjectUrls(obj, fields = ['imagePath', 'thumbnailUrl', 'mediumUrl', 'largeUrl', 'validIdPath', 'proofOfResidencyPath', 'selfieUrl']) {
     if (!obj) return obj;
     
     const converted = { ...obj };
