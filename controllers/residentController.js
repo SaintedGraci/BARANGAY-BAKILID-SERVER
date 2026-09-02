@@ -1,9 +1,11 @@
 import Resident from "../models/resident.js";
 import User from "../models/user.js";
+import Resident from "../models/resident.js";
 import bcrypt from "bcryptjs";
 import { paginateQuery } from "../utils/pagination.js";
 import APIResponse from "../utils/apiResponse.js";
 import { convertObjectUrls } from "../utils/imageProxy.js";
+import logger from "../config/logger.js";
 
 // Get current resident's own profile
 export const getMyProfile = async (req, res) => {
