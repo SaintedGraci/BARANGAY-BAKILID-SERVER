@@ -24,67 +24,137 @@ export const sendVerificationEmail = async (email, code, name) => {
     // Get Resend client (lazy initialization)
     const resendClient = getResendClient();
 
-    // Email HTML template
+    // Email HTML template - Vercel-style with Government Green
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <title>Email Verification</title>
       </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
-        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f5f5f5; padding: 20px;">
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; background-color: #fafafa; -webkit-font-smoothing: antialiased;">
+        <!-- Main Container -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fafafa; padding: 40px 20px;">
           <tr>
             <td align="center">
-              <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <!-- Header -->
+              <!-- Email Card -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                
+                <!-- Government Header -->
                 <tr>
-                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Barangay Bakilid</h1>
-                    <p style="color: #ffffff; margin: 10px 0 0 0; opacity: 0.9;">Email Verification</p>
+                  <td style="background-color: #000000; padding: 32px 32px 24px 32px; border-bottom: 3px solid #10b981;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td>
+                          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">Republic of the Philippines</h1>
+                          <p style="color: rgba(255,255,255,0.7); margin: 4px 0 0 0; font-size: 14px; font-weight: 400;">Barangay Bakilid, Mandaue City</p>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
-                
-                <!-- Content -->
+
+                <!-- Verification Badge -->
                 <tr>
-                  <td style="padding: 40px 30px;">
-                    <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 24px;">Hello ${name}!</h2>
-                    <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
-                      Thank you for registering with Barangay Bakilid Smart System. To complete your registration and verify your email address, please use the verification code below:
-                    </p>
-                    
-                    <!-- Verification Code -->
-                    <div style="background-color: #f8f9fa; border: 2px dashed #667eea; border-radius: 8px; padding: 30px; text-align: center; margin: 30px 0;">
-                      <p style="color: #666666; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
-                      <p style="color: #667eea; margin: 0; font-size: 36px; font-weight: bold; letter-spacing: 8px;">${code}</p>
-                    </div>
-                    
-                    <p style="color: #666666; line-height: 1.6; margin: 20px 0; font-size: 14px;">
-                      This code will expire in <strong>10 minutes</strong>. If you didn't request this verification, please ignore this email.
-                    </p>
-                    
-                    <!-- Info Box -->
-                    <div style="background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                      <p style="color: #1565c0; margin: 0; font-size: 14px; line-height: 1.6;">
-                        <strong>Benefits of verifying your email:</strong><br>
-                        • Receive instant notifications for document requests<br>
-                        • Get updates on barangay announcements<br>
-                        • Recover your account if you forget your password
-                      </p>
-                    </div>
+                  <td style="padding: 32px 32px 0 32px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="background-color: #10b981; border-radius: 6px; padding: 6px 12px;">
+                          <span style="color: #ffffff; font-size: 13px; font-weight: 500; letter-spacing: 0.3px;">📧 EMAIL VERIFICATION</span>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
-                
+
+                <!-- Main Content -->
+                <tr>
+                  <td style="padding: 24px 32px 32px 32px;">
+                    <h2 style="color: #000000; margin: 0 0 16px 0; font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -0.7px;">Verify your email</h2>
+                    <p style="color: #525252; line-height: 1.6; margin: 0 0 28px 0; font-size: 16px;">
+                      Hello <strong style="color: #000000;">${name}</strong>,
+                    </p>
+                    <p style="color: #525252; line-height: 1.6; margin: 0 0 32px 0; font-size: 16px;">
+                      Thank you for registering with Barangay Bakilid Smart System. To complete your registration, please enter the verification code below:
+                    </p>
+
+                    <!-- Verification Code Card -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #10b981; border-radius: 12px; margin-bottom: 32px;">
+                      <tr>
+                        <td style="padding: 32px; text-align: center;">
+                          <p style="color: #065f46; margin: 0 0 12px 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px;">Your Verification Code</p>
+                          <p style="color: #047857; margin: 0; font-size: 42px; font-weight: 700; letter-spacing: 12px; font-family: 'Courier New', monospace;">${code}</p>
+                          <p style="color: #059669; margin: 12px 0 0 0; font-size: 13px; font-weight: 500;">Expires in 10 minutes</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Benefits Card -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fafafa; border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 24px;">
+                      <tr>
+                        <td style="padding: 20px;">
+                          <p style="color: #737373; margin: 0 0 16px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;">Benefits of Verification</p>
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding: 8px 0;">
+                                <p style="color: #525252; margin: 0; font-size: 14px; line-height: 1.6;">
+                                  ✓ Receive instant notifications for document requests
+                                </p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 8px 0;">
+                                <p style="color: #525252; margin: 0; font-size: 14px; line-height: 1.6;">
+                                  ✓ Get updates on barangay announcements
+                                </p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 8px 0;">
+                                <p style="color: #525252; margin: 0; font-size: 14px; line-height: 1.6;">
+                                  ✓ Recover your account if you forget your password
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Security Notice -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 6px;">
+                      <tr>
+                        <td style="padding: 16px 20px;">
+                          <p style="color: #92400e; margin: 0; font-size: 13px; line-height: 1.6;">
+                            <strong style="font-weight: 600;">Security Note:</strong> If you didn't request this verification, please ignore this email. Your account will remain unverified and inactive.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
                 <!-- Footer -->
                 <tr>
-                  <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
-                    <p style="color: #999999; margin: 0; font-size: 12px; line-height: 1.6;">
-                      This is an automated message from Barangay Bakilid Smart System.<br>
-                      Please do not reply to this email.
+                  <td style="background-color: #fafafa; padding: 24px 32px; border-top: 1px solid #e5e5e5;">
+                    <p style="color: #a3a3a3; margin: 0 0 8px 0; font-size: 12px; line-height: 1.5;">
+                      This is an automated notification from Barangay Bakilid Smart System. Please do not reply to this email.
                     </p>
-                    <p style="color: #999999; margin: 10px 0 0 0; font-size: 12px;">
+                    <p style="color: #a3a3a3; margin: 0; font-size: 12px;">
                       © ${new Date().getFullYear()} Barangay Bakilid. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Branding Footer -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; margin-top: 24px;">
+                <tr>
+                  <td align="center" style="padding: 0 20px;">
+                    <p style="color: #a3a3a3; margin: 0; font-size: 11px; line-height: 1.5;">
+                      Powered by Barangay Bakilid Smart System
                     </p>
                   </td>
                 </tr>
