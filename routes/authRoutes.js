@@ -4,6 +4,7 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 import { uploadToR2Middleware } from "../middleware/r2UploadMiddleware.js";
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from "../middleware/rateLimitMiddleware.js";
 import { strictRateLimiter } from "../middleware/rateLimiter.js";
+import { checkEmailSendLimit } from "../middleware/emailRateLimiter.js";
 import { registerValidation, loginValidation, refreshTokenValidation, handleValidationErrors } from "../validators/authValidators.js";
 
 const router = express.Router();
@@ -248,8 +249,10 @@ router.get("/me", authMiddleware, async (req, res) => {
 router.post("/logout", authMiddleware, logout);
 
 // EMAIL VERIFICATION ROUTES (before registration)
-// Rate limit: 5 requests per 15 minutes per IP + 60s cooldown per email
-router.post("/send-verification-code", strictRateLimiter, sendVerificationCode);
+// Multi-layer rate limiting:
+// 1. IP-based: 5 requests per 15 minutes (strictRateLimiter)
+// 2. Email-based: 60s cooldown + max 5 emails/day (checkEmailSendLimit)
+router.post("/send-verification-code", strictRateLimiter, checkEmailSendLimit, sendVerificationCode);
 router.post("/verify-code-before-registration", verifyCodeBeforeRegistration);
 
 // USERNAME AVAILABILITY CHECK

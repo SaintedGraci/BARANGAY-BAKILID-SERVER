@@ -8,6 +8,7 @@ import RevokedToken from "../models/revokedToken.js";
 import crypto from "crypto";
 import { logAuthEvent, logSecurityEvent } from "../middleware/loggingMiddleware.js";
 import { sendVerificationEmail, generateVerificationCode } from "../services/emailService.js";
+import { trackFailedVerification, resetFailedVerification } from "../middleware/emailRateLimiter.js";
 import logger from "../config/logger.js";
 
 // Token expiration times
@@ -698,6 +699,7 @@ export const verifyCodeBeforeRegistration = async (req, res) => {
 
         // Check if code matches
         if (verification.code !== code) {
+            trackFailedVerification(email); // Track failed attempt
             logSecurityEvent('EMAIL_VERIFICATION_FAILED_INVALID_CODE', { email }, req);
             return res.status(400).json({
                 success: false,
@@ -718,6 +720,9 @@ export const verifyCodeBeforeRegistration = async (req, res) => {
         // Mark as verified
         verification.verified = true;
         global.pendingVerifications.set(email, verification);
+        
+        // Reset failed attempts on successful verification
+        resetFailedVerification(email);
 
         logger.info(`Email verified (pre-registration): ${email}`);
 
