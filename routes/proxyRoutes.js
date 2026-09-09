@@ -16,6 +16,22 @@ const r2Client = new S3Client({
 const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 
 /**
+ * CORS middleware for proxy routes
+ */
+router.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
+    next();
+});
+
+/**
  * Proxy endpoint to serve R2 images through Railway backend
  * This bypasses R2 public URL issues
  * 
@@ -43,7 +59,6 @@ router.get('/image', async (req, res) => {
         // Set appropriate headers
         res.setHeader('Content-Type', response.ContentType || 'image/webp');
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        res.setHeader('Access-Control-Allow-Origin', '*');
         
         // Stream the image
         response.Body.pipe(res);
