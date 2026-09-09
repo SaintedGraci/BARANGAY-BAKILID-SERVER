@@ -36,6 +36,34 @@ export const generateRefreshToken = async (user) => {
     return token;
 };
 
+// Check username availability (for real-time validation)
+export const checkUsername = async (req, res) => {
+    try {
+        const { username } = req.query;
+        
+        if (!username) {
+            return res.status(400).json({
+                success: false,
+                message: "Username is required"
+            });
+        }
+
+        const existingUsername = await User.findOne({ where: { username } });
+        
+        return res.status(200).json({
+            success: true,
+            available: !existingUsername,
+            message: existingUsername ? "Username already taken" : "Username is available"
+        });
+    } catch (error) {
+        logger.error('Check username error:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Error checking username availability"
+        });
+    }
+};
+
 export const register = async (req, res) => {
     try {
         const {
