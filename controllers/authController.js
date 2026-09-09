@@ -60,16 +60,7 @@ export const register = async (req, res) => {
             }
         }
 
-        // Check if username or email already exists
-        const existingUser = await User.findOne({ where: { email } });
-        if (existingUser) {
-            logSecurityEvent('REGISTRATION_ATTEMPT_DUPLICATE_EMAIL', { email }, req);
-            return res.status(400).json({
-                success: false,
-                message: "Email already exists"
-            });
-        }
-
+        // Check if username already exists
         const existingUsername = await User.findOne({ where: { username } });
         if (existingUsername) {
             logSecurityEvent('REGISTRATION_ATTEMPT_DUPLICATE_USERNAME', { username }, req);
@@ -77,6 +68,18 @@ export const register = async (req, res) => {
                 success: false,
                 message: "Username already exists"
             });
+        }
+
+        // Only check email uniqueness for real emails (not auto-generated @bakilid.local)
+        if (email && !email.endsWith('@bakilid.local')) {
+            const existingUser = await User.findOne({ where: { email } });
+            if (existingUser) {
+                logSecurityEvent('REGISTRATION_ATTEMPT_DUPLICATE_EMAIL', { email }, req);
+                return res.status(400).json({
+                    success: false,
+                    message: "Email already exists"
+                });
+            }
         }
 
         // Hash password
