@@ -16,6 +16,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Test and diagnostic scripts (don't deploy to production)
+test-*.js
+check-*.js
+list-*.js
+security-deployment-check.js
+generate-password-hash.js
+
 # OS files
 .DS_Store
 Thumbs.db

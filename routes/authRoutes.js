@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, refreshToken, logout, verifyEmail, resendVerificationCode, sendVerificationCode, verifyCodeBeforeRegistration, checkUsername } from "../controllers/authController.js";
+import { register, login, refreshToken, logout, verifyEmail, resendVerificationCode, sendVerificationCode, verifyCodeBeforeRegistration, checkUsername, requestPasswordReset, verifyResetToken, resetPassword } from "../controllers/authController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { uploadToR2Middleware } from "../middleware/r2UploadMiddleware.js";
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from "../middleware/rateLimitMiddleware.js";
@@ -261,5 +261,11 @@ router.get("/check-username", checkUsername);
 // EMAIL VERIFICATION ROUTES (after registration)
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerificationCode);
+
+// PASSWORD RESET / FORGOT ACCOUNT ROUTES
+// Rate limit password reset requests to prevent email spam and account enumeration
+router.post("/forgot-account", strictRateLimiter, requestPasswordReset);
+router.post("/verify-reset-token", verifyResetToken);
+router.post("/reset-password", resetPassword);
 
 export default router;

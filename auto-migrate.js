@@ -1205,6 +1205,59 @@ export async function autoMigrate() {
       logger.info('✓ Residents selfie verification columns already exist (TASK18)');
     }
 
+    // ============ TASK 19: Forgot Account / Password Recovery ============
+    
+    // Check if password_reset_tokens table exists
+    const [passwordResetTableResults] = await sequelize.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'password_reset_tokens';
+    `);
+
+    if (passwordResetTableResults.length === 0) {
+      logger.info('⚙️ Running automatic migration: Creating password_reset_tokens table (TASK19)...');
+      
+      await sequelize.query(`
+        CREATE TABLE password_reset_tokens (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          UserId INT NOT NULL COMMENT 'References Users.id',
+          token VARCHAR(255) NOT NULL UNIQUE COMMENT 'Plain reset token (sent to user)',
+          tokenHash VARCHAR(255) NOT NULL COMMENT 'SHA256 hash of token for security',
+          expiresAt DATETIME NOT NULL COMMENT 'Token expiration time (30 minutes)',
+          used BOOLEAN DEFAULT FALSE NOT NULL COMMENT 'Whether token has been used',
+          usedAt DATETIME NULL COMMENT 'When token was used',
+          ipAddress VARCHAR(45) NULL COMMENT 'IP address that requested reset',
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (UserId) REFERENCES Users(id) ON DELETE CASCADE,
+          INDEX idx_user (UserId),
+          INDEX idx_token (token),
+          INDEX idx_token_hash (tokenHash),
+          INDEX idx_expires (expiresAt),
+          INDEX idx_used (used)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+        COMMENT='Password reset tokens for forgot password feature (TASK19)';
+      `);
+      
+      logger.info('✅ Migration completed: password_reset_tokens table created');
+      logger.info('🔐 TASK19: Forgot Account/Password Recovery is now active');
+      logger.info('🔒 Security features:');
+      logger.info('   - SHA-256 token hashing');
+      logger.info('   - 30-minute expiration');
+      logger.info('   - Single-use tokens');
+      logger.info('   - Rate limiting (5 requests/15min)');
+      logger.info('   - Account enumeration prevention');
+      logger.info('   - IP address logging for audit');
+      logger.info('📧 Email features:');
+      logger.info('   - Vercel-style professional template');
+      logger.info('   - Government green branding (#10b981)');
+      logger.info('   - Mobile-responsive design');
+      logger.info('   - Clear security warnings');
+    } else {
+      logger.info('✓ Password_reset_tokens table already exists (TASK19)');
+    }
+
   } catch (error) {
     console.error('❌ Auto-migration error:');
     console.error('Error message:', error?.message || 'No message');

@@ -34,6 +34,7 @@ import Announcement from "./models/announcement.js";
 import Notification from "./models/notification.js";
 import RefreshToken from "./models/refreshToken.js";
 import RevokedToken from "./models/revokedToken.js";
+import PasswordResetToken from "./models/passwordResetToken.js";
 import Image from "./models/image.js";
 import AnnouncementReaction from "./models/announcementReaction.js";
 import AnnouncementComment from "./models/announcementComment.js";

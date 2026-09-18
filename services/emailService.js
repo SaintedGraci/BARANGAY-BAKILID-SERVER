@@ -395,3 +395,162 @@ export default {
   generateVerificationCode,
   sendPickupNotificationEmail
 };
+
+
+// Send password reset email with modern Vercel-style + government template
+export const sendPasswordResetEmail = async (email, data) => {
+  try {
+    const resendClient = getResendClient();
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Password Reset Request</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; background-color: #fafafa; -webkit-font-smoothing: antialiased;">
+        <!-- Main Container -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fafafa; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <!-- Email Card -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                
+                <!-- Government Header -->
+                <tr>
+                  <td style="background-color: #000000; padding: 32px 32px 24px 32px; border-bottom: 3px solid #10b981;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td>
+                          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.5px;">Republic of the Philippines</h1>
+                          <p style="color: rgba(255,255,255,0.7); margin: 4px 0 0 0; font-size: 14px; font-weight: 400;">Barangay Bakilid, Mandaue City</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Badge -->
+                <tr>
+                  <td style="padding: 32px 32px 0 32px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="background-color: #f59e0b; border-radius: 6px; padding: 6px 12px;">
+                          <span style="color: #ffffff; font-size: 13px; font-weight: 500; letter-spacing: 0.3px;">🔐 PASSWORD RESET</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Main Content -->
+                <tr>
+                  <td style="padding: 24px 32px 32px 32px;">
+                    <h2 style="color: #000000; margin: 0 0 16px 0; font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -0.7px;">Reset your password</h2>
+                    <p style="color: #525252; line-height: 1.6; margin: 0 0 28px 0; font-size: 16px;">
+                      Hello <strong style="color: #000000;">${data.name}</strong>,
+                    </p>
+                    <p style="color: #525252; line-height: 1.6; margin: 0 0 32px 0; font-size: 16px;">
+                      We received a request to reset the password for your Barangay Bakilid account. Click the button below to create a new password.
+                    </p>
+
+                    <!-- Reset Button -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 32px;">
+                      <tr>
+                        <td align="center">
+                          <a href="${data.resetUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">
+                            Reset Password
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Alternative Link -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fafafa; border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 24px;">
+                      <tr>
+                        <td style="padding: 16px 20px;">
+                          <p style="color: #737373; margin: 0 0 8px 0; font-size: 12px; font-weight: 600;">Or copy and paste this link:</p>
+                          <p style="color: #525252; margin: 0; font-size: 13px; word-break: break-all; font-family: 'Courier New', monospace;">
+                            ${data.resetUrl}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Expiration Notice -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 6px; margin-bottom: 24px;">
+                      <tr>
+                        <td style="padding: 16px 20px;">
+                          <p style="color: #92400e; margin: 0; font-size: 13px; line-height: 1.6;">
+                            <strong style="font-weight: 600;">Expires in ${data.expiresInMinutes} minutes:</strong> This password reset link will expire automatically for your security.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Security Warning -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fee2e2; border-left: 3px solid #ef4444; border-radius: 6px;">
+                      <tr>
+                        <td style="padding: 16px 20px;">
+                          <p style="color: #991b1b; margin: 0; font-size: 13px; line-height: 1.6;">
+                            <strong style="font-weight: 600;">Security Notice:</strong> If you did not request a password reset, please ignore this email or contact the barangay office immediately. Your account remains secure.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #fafafa; padding: 24px 32px; border-top: 1px solid #e5e5e5;">
+                    <p style="color: #a3a3a3; margin: 0 0 8px 0; font-size: 12px; line-height: 1.5;">
+                      This is an automated notification from Barangay Bakilid Smart System. Please do not reply to this email.
+                    </p>
+                    <p style="color: #a3a3a3; margin: 0; font-size: 12px;">
+                      © ${new Date().getFullYear()} Barangay Bakilid. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Branding Footer -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; margin-top: 24px;">
+                <tr>
+                  <td align="center" style="padding: 0 20px;">
+                    <p style="color: #a3a3a3; margin: 0; font-size: 11px; line-height: 1.5;">
+                      Powered by Barangay Bakilid Smart System
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const { data: result, error } = await resendClient.emails.send({
+      from: process.env.EMAIL_FROM || 'Barangay Bakilid <noreply@barangaybakilid.com>',
+      to: email,
+      subject: 'Password Reset Request - Barangay Bakilid',
+      html: htmlContent
+    });
+
+    if (error) {
+      logger.error(`Resend API error for password reset ${email}:`, error);
+      throw new Error(error.message || 'Failed to send password reset email via Resend');
+    }
+
+    logger.info(`✅ Password reset email sent to ${email} via Resend (ID: ${result.id})`);
+    return { success: true, messageId: result.id };
+
+  } catch (error) {
+    logger.error(`Failed to send password reset email to ${email}:`, error.message);
+    throw new Error(`Failed to send password reset email: ${error.message}`);
+  }
+};
