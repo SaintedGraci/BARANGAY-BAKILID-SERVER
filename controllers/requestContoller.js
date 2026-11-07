@@ -2,13 +2,16 @@ import Request from "../models/request.js";
 import Resident from "../models/resident.js";
 import User from "../models/user.js";
 import Notification from "../models/notification.js";
+import { Op } from "sequelize";
 
 export const getAllRequests = async (req, res) => {
     try {
         const userId = req.user.id;
         const userRole = req.user.role;
 
-        let whereClause = {};
+        let whereClause = {
+            isArchived: false // Exclude archived requests by default
+        };
         
         // If user is a resident, only show their requests
         if (userRole === 'resident') {
@@ -298,6 +301,299 @@ export const deleteRequest = async (req, res) => {
             success: false,
             message: "Failed to delete request",
             error: error.message 
+        });
+    }
+};
+
+// Archive a claimed request
+export const archiveRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Check admin permissions
+        const isAdmin = ['admin', 'secretary', 'captain', 'superadmin', 'staff'].includes(userRole);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "You don't have permission to archive requests"
+            });
+        }
+
+        // Find request
+        const request = await Request.findByPk(id, {
+            include: [{
+                model: Resident,
+                attributes: ['id', 'firstName', 'lastName']
+            }]
+        });
+
+        if (!request) {
+            return res.status(404).json({
+                success: false,
+                message: "Request not found"
+            });
+        }
+
+        // Verify status is "Claimed"
+        if (request.status !== 'Claimed') {
+            return res.status(400).json({
+                success: false,
+                message: `Only claimed requests can be archived (current status: ${request.status})`
+            });
+        }
+
+        // Check if already archived
+        if (request.isArchived) {
+            return res.status(400).json({
+                success: false,
+                message: "This request is already archived"
+            });
+        }
+
+        // Archive the request
+        await request.update({
+            isArchived: true,
+            archivedDate: new Date(),
+            archivedBy: userId,
+            // Set claimedDate if not already set
+            claimedDate: request.claimedDate || new Date()
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Request archived successfully",
+            data: {
+                id: request.id,
+                documentType: request.documentType,
+                residentName: `${request.Resident.firstName} ${request.Resident.lastName}`,
+                archivedDate: request.archivedDate
+            }
+        });
+
+    } catch (error) {
+        console.error("Archive request error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to archive request",
+            error: error.message
+        });
+    }
+};
+
+// Get all archived requests
+export const getArchivedRequests = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        
+        // Build query params for filtering
+        const { search, startDate, endDate, documentType, page = 1, limit = 50 } = req.query;
+
+        let whereClause = { isArchived: true };
+        
+        // If user is a resident, only show their archived requests
+        if (userRole === 'resident') {
+            const resident = await Resident.findOne({ where: { UserId: userId } });
+            if (!resident) {
+                return res.status(200).json({ 
+                    success: true,
+                    data: [],
+                    pagination: { total: 0, page: 1, totalPages: 0 }
+                });
+            }
+            whereClause.ResidentId = resident.id;
+        }
+
+        // Search filter (resident name or document type)
+        if (search) {
+            whereClause['$Resident.firstName$'] = { [Op.like]: `%${search}%` };
+            // Note: For more complex search, consider full-text search or separate queries
+        }
+
+        // Date range filter
+        if (startDate || endDate) {
+            whereClause.claimedDate = {};
+            if (startDate) whereClause.claimedDate[Op.gte] = new Date(startDate);
+            if (endDate) whereClause.claimedDate[Op.lte] = new Date(endDate);
+        }
+
+        // Document type filter
+        if (documentType) {
+            whereClause.documentType = documentType;
+        }
+
+        // Calculate pagination
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+
+        const { count, rows: archivedRequests } = await Request.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Resident,
+                    attributes: ['id', 'firstName', 'lastName', 'contactNumber'],
+                    include: [{
+                        model: User,
+                        attributes: ['email', 'username']
+                    }]
+                }
+            ],
+            order: [['archivedDate', 'DESC']],
+            limit: parseInt(limit),
+            offset: offset
+        });
+
+        const totalPages = Math.ceil(count / parseInt(limit));
+
+        return res.status(200).json({ 
+            success: true,
+            data: archivedRequests,
+            pagination: {
+                total: count,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: totalPages
+            }
+        });
+    } catch (error) {
+        console.error("Get archived requests error:", error);
+        return res.status(500).json({ 
+            success: false,
+            message: "Failed to fetch archived requests",
+            error: error.message 
+        });
+    }
+};
+
+// Restore archived request (unarchive)
+export const unarchiveRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userRole = req.user.role;
+
+        // Only admin/captain can unarchive
+        const canUnarchive = ['admin', 'captain', 'superadmin'].includes(userRole);
+        if (!canUnarchive) {
+            return res.status(403).json({
+                success: false,
+                message: "You don't have permission to unarchive requests"
+            });
+        }
+
+        const request = await Request.findByPk(id);
+
+        if (!request) {
+            return res.status(404).json({
+                success: false,
+                message: "Request not found"
+            });
+        }
+
+        if (!request.isArchived) {
+            return res.status(400).json({
+                success: false,
+                message: "This request is not archived"
+            });
+        }
+
+        // Unarchive
+        await request.update({
+            isArchived: false,
+            archivedDate: null,
+            archivedBy: null
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Request restored from archives",
+            data: request
+        });
+
+    } catch (error) {
+        console.error("Unarchive request error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to unarchive request",
+            error: error.message
+        });
+    }
+};
+
+// Update claim status and auto-set claimedDate
+export const markAsClaimed = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Check admin permissions
+        const isAdmin = ['admin', 'secretary', 'captain', 'superadmin', 'staff'].includes(userRole);
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "You don't have permission to mark requests as claimed"
+            });
+        }
+
+        const request = await Request.findByPk(id, {
+            include: [{
+                model: Resident,
+                attributes: ['id', 'firstName', 'lastName']
+            }]
+        });
+
+        if (!request) {
+            return res.status(404).json({
+                success: false,
+                message: "Request not found"
+            });
+        }
+
+        // Verify current status
+        if (request.status !== 'Ready for Release') {
+            return res.status(400).json({
+                success: false,
+                message: `Can only mark "Ready for Release" requests as claimed (current: ${request.status})`
+            });
+        }
+
+        // Update to Claimed and set claimedDate
+        await request.update({
+            status: 'Claimed',
+            claimedDate: new Date(),
+            processedBy: userId
+        });
+
+        // Create notification
+        const residentUserId = request.Resident?.User?.id;
+        if (residentUserId) {
+            await Notification.create({
+                UserId: residentUserId,
+                type: 'request_status_update',
+                title: 'Document Claimed',
+                message: `Your ${request.documentType} has been marked as claimed`,
+                data: {
+                    requestId: request.id,
+                    documentType: request.documentType,
+                    claimedDate: request.claimedDate
+                },
+                read: false
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Request marked as claimed",
+            data: request
+        });
+
+    } catch (error) {
+        console.error("Mark as claimed error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to mark request as claimed",
+            error: error.message
         });
     }
 };

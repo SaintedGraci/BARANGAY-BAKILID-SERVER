@@ -75,6 +75,35 @@ const Request = sequelize.define("Request", {
         defaultValue: 'Unpaid',
     },
 
+    // Archive system fields
+    isArchived: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        comment: 'True when document is claimed and archived',
+    },
+
+    claimedDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Date when document was claimed by resident',
+    },
+
+    archivedDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Date when request was moved to archives',
+    },
+
+    archivedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'Users',
+            key: 'id',
+        },
+        comment: 'User who archived this request',
+    },
+
 });
 
 Resident.hasMany(Request);

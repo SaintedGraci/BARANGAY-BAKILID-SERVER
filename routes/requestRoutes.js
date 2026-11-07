@@ -5,7 +5,11 @@ import {
     createRequest, 
     updateRequest, 
     deleteRequest,
-    sendPickupEmail
+    sendPickupEmail,
+    archiveRequest,
+    getArchivedRequests,
+    unarchiveRequest,
+    markAsClaimed
 } from "../controllers/requestContoller.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleMiddleware } from "../middleware/roleMiddleware.js";
@@ -40,6 +44,65 @@ router.use(authMiddleware);
  *                     $ref: '#/components/schemas/Request'
  */
 router.get("/", getAllRequests);
+
+/**
+ * @swagger
+ * /api/requests/archives:
+ *   get:
+ *     summary: Get all archived requests
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     description: View archived requests with search and filter capabilities
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by resident name or document type
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by claimed date (start)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by claimed date (end)
+ *       - in: query
+ *         name: documentType
+ *         schema:
+ *           type: string
+ *         description: Filter by document type
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *     responses:
+ *       200:
+ *         description: Archived requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                 pagination:
+ *                   type: object
+ */
+router.get("/archives", getArchivedRequests);
 
 /**
  * @swagger
@@ -193,5 +256,82 @@ router.delete("/:id", deleteRequest); // Removed role restriction - validation i
  *         description: Request not found or no email address
  */
 router.post("/:id/send-pickup-email", roleMiddleware(["admin", "secretary", "captain"]), sendPickupEmail);
+
+/**
+ * @swagger
+ * /api/requests/{id}/claim:
+ *   post:
+ *     summary: Mark request as claimed
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Mark a "Ready for Release" request as claimed and automatically set claimedDate
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Request marked as claimed
+ *       400:
+ *         description: Invalid status
+ *       403:
+ *         description: Insufficient permissions
+ */
+router.post("/:id/claim", roleMiddleware(["admin", "secretary", "captain", "staff"]), markAsClaimed);
+
+/**
+ * @swagger
+ * /api/requests/{id}/archive:
+ *   post:
+ *     summary: Archive a claimed request
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Move a claimed request to archives for record keeping. Only claimed requests can be archived.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Request archived successfully
+ *       400:
+ *         description: Request not in claimed status or already archived
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Request not found
+ */
+router.post("/:id/archive", roleMiddleware(["admin", "secretary", "captain", "staff"]), archiveRequest);
+
+/**
+ * @swagger
+ * /api/requests/{id}/unarchive:
+ *   post:
+ *     summary: Restore request from archives
+ *     tags: [Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Unarchive a request (admin/captain only)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Request restored from archives
+ *       400:
+ *         description: Request is not archived
+ *       403:
+ *         description: Insufficient permissions
+ */
+router.post("/:id/unarchive", roleMiddleware(["admin", "captain"]), unarchiveRequest);
 
 export default router;

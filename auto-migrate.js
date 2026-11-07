@@ -1,6 +1,9 @@
 import sequelize from './config/db.js';
 import logger from './config/logger.js';
 
+// Import migrations
+import { up as addRequestArchiveSystem } from './migrations/add-request-archive-system.js';
+
 export async function autoMigrate() {
   try {
     logger.info('🚀 Starting auto-migration process...');
@@ -48,6 +51,11 @@ export async function autoMigrate() {
         AND TABLE_NAME = 'Users' 
         AND COLUMN_NAME = 'emailVerificationCode';
     `);
+    
+    // Run archive system migration
+    logger.info('⚙️ Checking archive system migration...');
+    await addRequestArchiveSystem();
+    logger.info('✅ Archive system migration check completed');
 
     if (emailVerifResults.length === 0) {
       logger.info('⚙️ Running automatic migration: Adding email verification columns to Users table...');
