@@ -1,7 +1,16 @@
 import rateLimit from 'express-rate-limit';
 
+// Check if demo mode is enabled (disables rate limiting for demos)
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+
+if (DEMO_MODE) {
+    console.log('⚠️  DEMO MODE ENABLED - Rate limiting is DISABLED');
+}
+
 // Strict rate limiter for login attempts (prevent brute force)
-export const loginLimiter = rateLimit({
+export const loginLimiter = DEMO_MODE 
+    ? (req, res, next) => next() // Bypass in demo mode
+    : rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 5, // Limit each IP to 5 login requests per windowMs
     message: {
@@ -15,7 +24,9 @@ export const loginLimiter = rateLimit({
 });
 
 // Moderate rate limiter for registration (prevent spam)
-export const registerLimiter = rateLimit({
+export const registerLimiter = DEMO_MODE
+    ? (req, res, next) => next() // Bypass in demo mode
+    : rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3, // Limit each IP to 3 registration requests per hour
     message: {
@@ -28,7 +39,9 @@ export const registerLimiter = rateLimit({
 });
 
 // General API rate limiter (prevent abuse)
-export const apiLimiter = rateLimit({
+export const apiLimiter = DEMO_MODE
+    ? (req, res, next) => next() // Bypass in demo mode
+    : rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per windowMs
     message: {
@@ -45,7 +58,9 @@ export const apiLimiter = rateLimit({
 });
 
 // Refresh token limiter (prevent token refresh abuse)
-export const refreshTokenLimiter = rateLimit({
+export const refreshTokenLimiter = DEMO_MODE
+    ? (req, res, next) => next() // Bypass in demo mode
+    : rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 10, // Limit each IP to 10 refresh requests per windowMs
     message: {

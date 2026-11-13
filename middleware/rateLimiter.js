@@ -3,6 +3,9 @@
  * Protects endpoints from spam/abuse by limiting requests per IP
  */
 
+// Check if demo mode is enabled
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+
 // Store for tracking requests: { ip: { count, resetTime } }
 const requestStore = new Map();
 
@@ -13,6 +16,11 @@ const requestStore = new Map();
  * @returns {Function} Express middleware
  */
 export const createRateLimiter = (maxRequests = 5, windowMs = 15 * 60 * 1000) => {
+    // Bypass rate limiting in demo mode
+    if (DEMO_MODE) {
+        return (req, res, next) => next();
+    }
+
     return (req, res, next) => {
         // Get client IP (handle proxy forwarding)
         const ip = req.ip || 
